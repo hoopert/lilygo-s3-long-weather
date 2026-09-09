@@ -1,0 +1,12 @@
+{
+  "name": "Airstream Weather Panel",
+  "version": "__VERSION__",
+  "home_assistant_domain": null,
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [{ "path": "airstream-weather.bin", "offset": 0 }]
+    }
+  ]
+}

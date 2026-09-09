@@ -1,0 +1,111 @@
+name: Build firmware
+
+# Produces the single-file binary that the web installer and the flash scripts
+# both use, so nobody has to install a toolchain to put this on a board.
+#
+#   every push  -> firmware.bin as a downloadable artifact
+#   every tag   -> a GitHub Release with the binary attached
+#   main branch -> the web installer published to GitHub Pages
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO and esptool
+        run: pip install --upgrade platformio esptool
+
+      - name: Build
+        working-directory: firmware
+        run: pio run
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0+${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # One file, flashed at offset 0. Splitting bootloader / partition table /
+      # app across three offsets is the single most common way an install goes
+      # wrong, and there is no reason to make anyone deal with it.
+      - name: Merge into a single flashable image
+        working-directory: firmware
+        run: |
+          BUILD=.pio/build/airstream-weather
+          BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 \
+                        -name boot_app0.bin | head -1)
+          mkdir -p ../dist
+          esptool.py --chip esp32s3 merge_bin \
+            -o ../dist/airstream-weather.bin \
+            --flash_mode dio --flash_freq 80m --flash_size 16MB \
+            0x0000   $BUILD/bootloader.bin \
+            0x8000   $BUILD/partitions.bin \
+            0xe000   "$BOOT_APP0" \
+            0x10000  $BUILD/firmware.bin
+          ls -la ../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: airstream-weather-firmware
+          path: dist/airstream-weather.bin
+
+      - name: Assemble the web installer
+        run: |
+          mkdir -p site
+          cp tools/web-installer/index.html site/
+          cp dist/airstream-weather.bin site/
+          sed "s/__VERSION__/${{ steps.version.outputs.version }}/" \
+            tools/web-installer/manifest.json > site/manifest.json
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        with:
+          path: site
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/airstream-weather.bin
+          generate_release_notes: true
+
+  deploy-pages:
+    needs: build
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
