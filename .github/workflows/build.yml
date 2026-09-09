@@ -106,11 +106,12 @@ jobs:
           files: dist/airstream-weather.bin
           generate_release_notes: true
 
-  # Requires the repository's Pages source to be set to "GitHub Actions"
-  # (Settings -> Pages -> Build and deployment -> Source), and requires the
-  # Pages site to already exist when the job runs. If either is not true this
-  # job fails within a couple of seconds while the build above stays green -
-  # see the maintainers section of docs/INSTALL.md.
+  # The `if:` below is what restricts deployments to main and tags. The
+  # github-pages environment may also carry its own deployment branch rule,
+  # pinned to whatever the default branch was when the environment was first
+  # created - and that rule is NOT updated when the default branch changes. A
+  # deploy refused by it fails in about two seconds having run no steps at all,
+  # while the build job above stays green. See docs/INSTALL.md.
   deploy-pages:
     needs: build
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
