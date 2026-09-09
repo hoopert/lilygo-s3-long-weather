@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airstream Weather Panel — Installer</title>
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* The same palette the panel itself uses - see firmware/src/ui/theme.h */
+  :root {
+    --ground: #0E1113;
+    --surface: #171B1E;
+    --rivet: #2E353A;
+    --aluminum: #C9D1D6;
+    --dim: #7C878E;
+    --oat: #E8DCC8;
+    --turquoise: #3FBFB0;
+    --sunset: #E2703A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--aluminum);
+    font-family: 'Jost', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--turquoise); margin: 0 0 14px;
+  }
+  h1 { font-size: 40px; font-weight: 600; line-height: 1.1; margin: 0 0 12px; color: var(--oat); }
+  .lede { font-size: 19px; color: var(--dim); margin: 0 0 40px; }
+
+  /* A riveted aluminum seam, the one ornament the design allows itself. */
+  .seam {
+    height: 1px; background: var(--rivet); margin: 40px 0; position: relative;
+  }
+  .seam::after {
+    content: ""; position: absolute; inset: -1px 0 auto 0; height: 3px;
+    background-image: radial-gradient(circle, var(--rivet) 1px, transparent 1.2px);
+    background-size: 16px 3px;
+  }
+
+  .install {
+    background: var(--surface); border: 1px solid var(--rivet); border-radius: 12px;
+    padding: 32px; text-align: center;
+  }
+  esp-web-install-button { --esp-tools-button-color: var(--ground); }
+  esp-web-install-button[install-supported] + .unsupported { display: none; }
+  .btn {
+    display: inline-block; background: var(--turquoise); color: var(--ground);
+    font-family: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; border: 0; border-radius: 999px;
+    padding: 15px 40px; cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .unsupported {
+    color: var(--sunset); font-size: 15px; margin-top: 18px;
+  }
+  .note { color: var(--dim); font-size: 14px; margin-top: 20px; }
+
+  h2 {
+    font-size: 13px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--dim); margin: 44px 0 18px;
+  }
+  ol { padding-left: 22px; margin: 0; }
+  ol li { margin-bottom: 14px; }
+  ol li::marker { color: var(--turquoise); font-weight: 600; }
+  code {
+    background: var(--surface); border: 1px solid var(--rivet); border-radius: 5px;
+    padding: 2px 7px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.86em; color: var(--oat);
+  }
+  a { color: var(--turquoise); }
+  strong { color: var(--oat); font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  td { padding: 9px 0; border-bottom: 1px solid var(--rivet); vertical-align: top; }
+  td:first-child {
+    width: 40%; color: var(--dim); font-size: 13px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding-right: 20px;
+  }
+  footer { margin-top: 56px; color: var(--dim); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">LilyGO T-Display S3 Long</p>
+  <h1>Airstream Weather&nbsp;Panel</h1>
+  <p class="lede">
+    Current conditions and the next ten hours, on a 640&times;180 strip built to
+    live on a bulkhead. Plug the board in and press the button — there is no
+    toolchain to install and no API key to sign up for.
+  </p>
+
+  <div class="install">
+    <esp-web-install-button manifest="manifest.json">
+      <button slot="activate" class="btn">Install firmware</button>
+      <span slot="unsupported" class="unsupported">
+        This browser can't talk to serial devices. Use Chrome, Edge, or Opera on
+        a desktop — Safari and Firefox don't support Web Serial.
+      </span>
+      <span slot="not-allowed" class="unsupported">
+        Serial access needs a secure page (https).
+      </span>
+    </esp-web-install-button>
+    <p class="note">Takes about 30 seconds. Erases anything already on the board.</p>
+  </div>
+
+  <h2>Then</h2>
+  <ol>
+    <li>The panel comes up and shows <strong>JOIN WI-FI "Airstream-Weather" FROM YOUR PHONE</strong>.</li>
+    <li>On your phone, join the <code>Airstream-Weather</code> network. A setup page opens by itself.</li>
+    <li>Pick your Wi-Fi, enter the password, save. Leave the location fields blank unless you want to pin the panel to a fixed spot — by default it finds itself, and keeps doing so every time you move.</li>
+    <li>The panel reconnects and the forecast lands within a few seconds. That's the whole install.</li>
+  </ol>
+
+  <div class="seam"></div>
+
+  <h2>Using it</h2>
+  <table>
+    <tr><td>Tap an hour</td><td>Full detail for that hour — feels-like, rain amount, gusts, humidity, dew point</td></tr>
+    <tr><td>Tap the temperature</td><td>Sun arc, high and low, UV, pressure, visibility</td></tr>
+    <tr><td>Swipe left / right</td><td>Move between screens</td></tr>
+    <tr><td>Swipe down</td><td>Brightness, refresh, and connection details</td></tr>
+    <tr><td>Press and hold</td><td>Fetch a new forecast now</td></tr>
+    <tr><td>BOOT button, short</td><td>Step the brightness down, wrapping back to Auto</td></tr>
+    <tr><td>BOOT button, double</td><td>Back to Auto brightness</td></tr>
+    <tr><td>BOOT button, hold</td><td>Blank the display; any touch wakes it</td></tr>
+  </table>
+
+  <h2>If the install button does nothing</h2>
+  <p class="note">
+    Hold <strong>BOOT</strong>, tap <strong>RST</strong>, release <strong>BOOT</strong>, then
+    press Install again. That forces the board into its download mode. On Linux you
+    may also need to be in the <code>dialout</code> group.
+  </p>
+
+  <footer>
+    Weather data from <a href="https://open-meteo.com">Open-Meteo</a>.
+    Source, wiring notes and the design brief are in the repository.
+  </footer>
+
+</div>
+</body>
+</html>
