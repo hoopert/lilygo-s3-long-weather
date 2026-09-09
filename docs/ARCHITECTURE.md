@@ -76,8 +76,25 @@ s_disp_drv.full_refresh = 1;             // required alongside sw_rotate
 `hor_res` and `ver_res` describe the **panel**, not the UI. LVGL then reports
 640×180 to the application and rotates each frame on its way out.
 
-This is the configuration LilyGO's own factory firmware uses, and it is the one
-that is known to work on this controller. Two consequences worth knowing:
+**`full_refresh` must stay 0.** `draw_buf_rotate()` in `lv_refr.c` begins:
+
+```c
+if(disp_refr->driver->full_refresh && drv->sw_rotate) {
+    LV_LOG_ERROR("cannot rotate a full refreshed display!");
+    return;
+}
+```
+
+That `return` happens before any flush, so the panel never receives a pixel:
+a permanently black screen with one error line on the serial console and no
+other symptom. LilyGO's factory example *does* set both — it ships a patched
+LVGL, which is what its "if you turn on software rotation, do not update or
+replace LVGL" comment is warning about. Against stock LVGL the two are
+mutually exclusive, and partial refresh is the better fit here anyway: most
+updates are a single label, so a small dirty rectangle beats repainting
+640x180 every second.
+
+Two further consequences worth knowing:
 
 **Touch input is rotated by LVGL, not by us.** `indev_pointer_proc()` applies the
 same 90° transform to pointer coordinates that it applies to the framebuffer, so
@@ -85,13 +102,14 @@ same 90° transform to pointer coordinates that it applies to the framebuffer, s
 every tap 90° from where it was made. This is the single easiest thing to get
 wrong in this file.
 
-**`full_refresh` means the whole screen redraws whenever anything is dirty.**
-That is why screen updates run once a second rather than continuously, and why
-the trend ribbon is guarded to redraw only when a new forecast lands.
+**Rotation happens in chunks.** LVGL rotates each dirty area through a scratch
+buffer of `LV_DISP_ROT_MAX_BUF`, flushing once per chunk, so one logical redraw
+becomes several `panel_push_pixels` calls. Growing that constant means fewer
+chunks, but it is carved out of the `LV_MEM_SIZE` pool, so the two move together.
 
-Two full 225KB framebuffers live in PSRAM. LVGL's own heap stays in internal
-SRAM, where it is roughly an order of magnitude faster for the many small
-allocations a widget tree makes.
+The draw buffers are a tenth of the screen each and live in **internal SRAM**,
+because LVGL renders into them pixel by pixel and internal memory is far faster
+for that than PSRAM. They fall back to PSRAM if internal allocation fails.
 
 ## Adding a screen
 
@@ -212,6 +230,8 @@ comments pointing at each other.
 | | |
 |---|---|
 | `LV_COLOR_16_SWAP` must be `1` | The AXS15231B wants big-endian RGB565; the ESP32 is little-endian and SPI transmits in memory order. Wrong value gives a recognisable but lurid image. |
+| `sw_rotate` + `full_refresh` is a black screen | Stock LVGL refuses the combination and returns before flushing. See [Rotation](#rotation). Copying LilyGO's example verbatim walks straight into this, because theirs runs on a patched LVGL. |
+| Serial can starve the main loop | With USB CDC on boot and no host attached, each write blocks up to 100ms. Anything logging per-frame makes the UI, the button and the Wi-Fi portal all go unresponsive while the device looks fine. `main.cpp` sets `Serial.setTxTimeoutMs(0)` so logging drops instead of blocking. |
 | Touch coordinates must **not** be pre-rotated | LVGL already does it. See [Rotation](#rotation). |
 | Gesture limits are not settable in `lv_conf.h` | LVGL 8.4 hardcodes `LV_INDEV_DEF_GESTURE_LIMIT` and `LV_INDEV_DEF_LONG_PRESS_TIME` without an `#ifndef` guard. They are set on the indev driver in `main.cpp`. |
 | Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. |

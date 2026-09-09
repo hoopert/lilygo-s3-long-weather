@@ -66,30 +66,60 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 void init_lvgl_display() {
     lv_init();
 
-    // Two full-screen buffers in PSRAM. LVGL's software rotation needs either
-    // full_refresh or a second full-size buffer; we give it both, which also
-    // buys clean double-buffering.
-    const size_t px = size_t(PANEL_WIDTH) * PANEL_HEIGHT;
-    auto *buf_a = static_cast<lv_color_t *>(heap_caps_malloc(px * sizeof(lv_color_t),
-                                                            MALLOC_CAP_SPIRAM));
-    auto *buf_b = static_cast<lv_color_t *>(heap_caps_malloc(px * sizeof(lv_color_t),
-                                                            MALLOC_CAP_SPIRAM));
+    // Partial draw buffers, a tenth of the screen each, in internal SRAM.
+    //
+    // NOT full-screen, and NOT full_refresh - see the disp_drv setup below for
+    // why that combination cannot work. Partial buffers are also the better fit
+    // for this UI: most updates are one label (the clock, a temperature), so
+    // redrawing a small dirty rectangle beats repainting 640x180 every second.
+    //
+    // Internal SRAM rather than PSRAM because LVGL renders into these buffers
+    // pixel by pixel, and internal memory is roughly an order of magnitude
+    // faster for that. At 23KB each they fit comfortably; the full-screen
+    // buffers this replaced did not, which is why they were in PSRAM.
+    const size_t px = (size_t(PANEL_WIDTH) * PANEL_HEIGHT) / 10;
+    const size_t bytes = px * sizeof(lv_color_t);
+
+    auto *buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_INTERNAL));
+    auto *buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_INTERNAL));
     if (buf_a == nullptr || buf_b == nullptr) {
-        // Without PSRAM there is nowhere to put 450KB of framebuffer, and
-        // continuing would fault somewhere far less obvious than here.
-        Serial.println("[fatal] could not allocate framebuffers - is PSRAM enabled?");
+        // Fall back to PSRAM rather than refusing to boot: slower, but a
+        // working panel beats a dead one.
+        Serial.println("[warn] draw buffers fell back to PSRAM");
+        heap_caps_free(buf_a);
+        heap_caps_free(buf_b);
+        buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM));
+        buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM));
+    }
+    if (buf_a == nullptr || buf_b == nullptr) {
+        Serial.println("[fatal] could not allocate draw buffers");
         while (true) delay(1000);
     }
     lv_disp_draw_buf_init(&s_draw_buf, buf_a, buf_b, px);
 
     lv_disp_drv_init(&s_disp_drv);
-    s_disp_drv.hor_res      = PANEL_WIDTH;    // the physical panel, not the UI
-    s_disp_drv.ver_res      = PANEL_HEIGHT;
-    s_disp_drv.flush_cb     = flush_cb;
-    s_disp_drv.draw_buf     = &s_draw_buf;
-    s_disp_drv.sw_rotate    = 1;
-    s_disp_drv.rotated      = UI_ROTATION;
-    s_disp_drv.full_refresh = 1;              // required alongside sw_rotate
+    s_disp_drv.hor_res  = PANEL_WIDTH;    // the physical panel, not the UI
+    s_disp_drv.ver_res  = PANEL_HEIGHT;
+    s_disp_drv.flush_cb = flush_cb;
+    s_disp_drv.draw_buf = &s_draw_buf;
+    s_disp_drv.sw_rotate = 1;
+    s_disp_drv.rotated   = UI_ROTATION;
+
+    // full_refresh MUST stay 0 here. draw_buf_rotate() in lv_refr.c opens with
+    //
+    //     if(disp_refr->driver->full_refresh && drv->sw_rotate) {
+    //         LV_LOG_ERROR("cannot rotate a full refreshed display!");
+    //         return;
+    //     }
+    //
+    // and that return happens before any flush, so the panel never receives a
+    // single pixel - a permanently black screen with one error line on the
+    // serial console. LilyGO's factory example does set both, which is where
+    // this came from, but it ships a patched LVGL; that is what its "if you
+    // turn on software rotation, do not update or replace LVGL" comment means.
+    // Against stock LVGL the two are mutually exclusive.
+    s_disp_drv.full_refresh = 0;
+
     lv_disp_drv_register(&s_disp_drv);
 
     lv_indev_drv_init(&s_indev_drv);
@@ -111,6 +141,16 @@ void init_lvgl_display() {
 
 void setup() {
     Serial.begin(115200);
+
+    // Never let logging stall the panel. With ARDUINO_USB_CDC_ON_BOOT the
+    // Serial writes block until a host drains them, up to a 100ms timeout
+    // each. On a bulkhead with nothing plugged in that is invisible - until
+    // something starts logging every frame, at which point the main loop is
+    // starved and the UI, the button and the Wi-Fi portal all go unresponsive
+    // while the device looks powered and fine. A zero timeout drops the bytes
+    // instead, which is the right trade for a device that spends its life with
+    // no USB host attached.
+    Serial.setTxTimeoutMs(0);
 
     panel_init();
     backlight_init();       // comes up dark and fades in with the first frame
