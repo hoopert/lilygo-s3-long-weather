@@ -133,19 +133,33 @@ default:
 ### If `build` is green but `deploy-pages` is red
 
 The firmware compiled and the Pages artifact uploaded fine; only the deployment
-was refused. `actions/deploy-pages` fails within a couple of seconds when it
-cannot find a Pages site to deploy into. Two things cause that:
+was refused. `actions/deploy-pages` fails within a couple of seconds when there
+is no Pages site for it to deploy into — it never gets as far as the artifact.
 
-1. **Source is still "Deploy from a branch"** (the default). The Pages API will
-   not create a deployment for a branch-sourced site. Change it to
-   "GitHub Actions".
-2. **Pages was enabled after the run started.** The setting is correct, but the
-   site did not exist yet when the job asked for it. Nothing is wrong — the
-   next run succeeds.
+The workflow needs **`actions/configure-pages`** to run before the artifact is
+uploaded. That step is what provisions the site and resolves its URL; setting
+the Source dropdown to "GitHub Actions" by itself is not enough, and its absence
+is easy to miss because the build job stays green and only the deploy goes red.
 
-Either way the fix is the same and needs no push: **re-run the failed job from
-the Actions tab**, or trigger the workflow manually (it accepts
-`workflow_dispatch`).
+Check these in order — every one of them fails the same way, in about two
+seconds, with the build job still green, so the symptom does not tell you which
+you are looking at:
+
+1. **The repository's default branch is `main`.** GitHub creates the
+   `github-pages` environment with a deployment branch rule that only permits
+   deployments from the *default branch*. If the default is still some other
+   branch, a deploy triggered by a push to `main` is refused outright — the
+   Source setting can be perfectly correct and it will still fail. Check
+   Settings → General → Default branch.
+2. **Source** is `GitHub Actions`, not "Deploy from a branch"
+   (Settings → Pages → Build and deployment).
+3. **`actions/configure-pages` runs before the artifact upload** — see above.
+4. **Action versions** match what GitHub's own sample workflow currently emits.
+   Settings → Pages → *Static HTML* → **Configure** prints one; it is also
+   prefilled with the default branch name, which makes it a quick way to check
+   item 1.
+5. **Permissions** include `pages: write` and `id-token: write`. They are set at
+   the workflow level here and repeated on the deploy job.
 
 To cut a release that `tools/flash.sh` can download from:
 
