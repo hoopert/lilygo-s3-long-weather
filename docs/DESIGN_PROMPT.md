@@ -1,11 +1,18 @@
 # Claude Design Prompt — Airstream Weather Panel
 
-Copy everything between the `---` rules into Claude Design.
+**Copy everything below the first `---` rule, through to the end of the file, into
+Claude Design.** All of it is addressed to Design, including the closing sections about
+where to commit its output.
 
 The prompt is written to be **self-contained**: it carries the hardware constraints,
 the render-engine constraints (LVGL 8 on an ESP32-S3), the brand direction, and the
 exact content model. Do not trim the constraint sections — they are the reason the
 output will be buildable rather than merely pretty.
+
+Give Design access to this repository before you run it. The prompt ends by telling it
+to commit `design/tokens.json` and `design/SPEC.md` on a branch, whose keys are the real
+firmware constant names — so applying the design afterwards is mechanical, and there is
+nothing for you to paste anywhere.
 
 ---
 
@@ -221,21 +228,107 @@ Specify durations and easing for each of these; the firmware implements them lit
 
 Eight artboards, each exactly 640×180 (the icon sheet may be taller), laid out on one
 canvas in the numbered order above, each labeled. Include a small swatch strip showing
-the eleven color tokens with their hex values and token names, and a type specimen strip
-showing the five cuts. Annotate key measurements — zone boundaries, column widths, and
-the vertical position of each text baseline — as the firmware will be built directly
-from these numbers.
+the ten color tokens with their hex values and token names, and a type specimen strip
+showing the five cuts.
+
+**Annotate every measurement you settle** — zone boundaries, column widths, and the
+vertical position of each text baseline. The firmware is built directly from these
+numbers, so an unannotated artboard is a picture rather than a specification.
+
+## WRITE YOUR OUTPUT INTO THE REPOSITORY
+
+You have access to this repository. Commit your work to it rather than handing it back
+as something to copy and paste — put it on a branch and open a pull request. Use exactly
+these paths:
+
+```
+design/
+├── tokens.json          the machine-readable handoff  ← the important one
+├── SPEC.md              per-artboard annotated measurements, in prose
+├── artboards/           your artboard source files
+└── exports/             one PNG per artboard, named to match the artboards
+```
+
+### `design/tokens.json` is the file that actually moves the firmware
+
+Its keys are the real constant names in the firmware, so applying your design is
+mechanical rather than interpretive. Emit exactly this shape, with your final values.
+The values below are what ships today — change what your design changes, and keep the
+rest.
+
+```json
+{
+  "schema": "airstream-design-handoff/v1",
+  "canvas": [640, 180],
+  "colors": {
+    "COL_GROUND":       "#0E1113",
+    "COL_SURFACE":      "#171B1E",
+    "COL_SURFACE_HI":   "#22282C",
+    "COL_RIVET":        "#2E353A",
+    "COL_ALUMINUM":     "#C9D1D6",
+    "COL_ALUMINUM_DIM": "#7C878E",
+    "COL_OAT":          "#E8DCC8",
+    "COL_TURQUOISE":    "#3FBFB0",
+    "COL_SUNSET":       "#E2703A",
+    "COL_SKY":          "#6FA8C7"
+  },
+  "temperature_ramp": [
+    { "fahrenheit": 32, "color": "#6FA8C7" },
+    { "fahrenheit": 50, "color": "#3FBFB0" },
+    { "fahrenheit": 68, "color": "#E8DCC8" },
+    { "fahrenheit": 90, "color": "#E2703A" }
+  ],
+  "type": {
+    "font_hero":  { "face": "Jost*", "weight": 600, "size": 72, "tracking": -1 },
+    "font_title": { "face": "Jost*", "weight": 500, "size": 30, "tracking":  0 },
+    "font_hour":  { "face": "Jost*", "weight": 500, "size": 24, "tracking":  0 },
+    "font_body":  { "face": "Jost*", "weight": 400, "size": 20, "tracking":  0 },
+    "font_label": { "face": "Jost*", "weight": 500, "size": 15, "tracking":  0 },
+    "font_micro": { "face": "Jost*", "weight": 500, "size": 12, "tracking":  1 }
+  },
+  "layout": {
+    "LAYOUT_SAFE":   10,
+    "LAYOUT_NOW_W":  208,
+    "today": {
+      "kHeroY": 24, "kNowIconX": 148, "kNowIconY": 8,
+      "kConditionY": 100, "kMetaY": 124, "kPlaceY": 146,
+      "kHourY": 6, "kIconY": 22, "kTempY": 44,
+      "kRibbonY": 84, "kRibbonH": 34, "kPrecipY": 122, "kWindY": 140
+    }
+  },
+  "motion": {
+    "UI_SCREEN_ANIM_MS":  280,
+    "UI_OVERLAY_ANIM_MS": 220,
+    "UI_VALUE_FADE_MS":   400,
+    "BL_FADE_MS":        1500
+  }
+}
+```
+
+Two constraints on those numbers, because they have costs the artboard does not show:
+
+- **Type sizes are baked into generated bitmap fonts.** Changing one means regenerating
+  a font cut (`tools/build_fonts.sh`) and spending flash. Change a size when the design
+  needs it, but not incidentally — and if you add a size, say so explicitly in `SPEC.md`
+  so the cut gets generated.
+- **The hour columns are 43px wide** (`LAYOUT_STRIP_W / 10`). Anything you place in one
+  has to hold three digits at that width. This is why the hourly temperatures currently
+  drop their degree sign.
+
+If your design changes something these keys cannot express — a new element, a different
+zone split, an extra overlay — describe it in `SPEC.md` under a heading `## Beyond the
+tokens`, with the measurements it needs.
 
 ---
 
-## After Claude Design produces the artboards
+## What happens after you commit
 
-Feed the result back into the firmware with:
+The firmware in this repository already implements the layout, palette, gesture map and
+motion timings described above, so this is a **refinement pass, not a rewrite**.
+`docs/UX.md` is the contract between the design and the code: if you change a gesture
+binding or a motion timing, change it there too.
 
-> Here are the finished artboards. Update `firmware/src/ui/theme.cpp` with the final
-> token values, and rebuild `screen_today.cpp` to match the annotated measurements
-> exactly. Keep the existing `ScreenManager` registration and gesture bindings intact.
-
-The firmware in this repository already implements the layout, palette, gesture map, and
-motion timings described above, so the design work is a **refinement pass**, not a
-rewrite. `docs/UX.md` is the contract between the two.
+Once `design/tokens.json` and `design/SPEC.md` are on a branch, the firmware side reads
+them directly and applies them to `firmware/src/ui/theme.h`, `theme.cpp`, and the
+`k*` constants at the top of `firmware/src/ui/screens/screen_today.cpp`. Nothing needs
+to be pasted anywhere.
