@@ -13,6 +13,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Action versions are pinned to major tags that run on Node 24. GitHub is
+# removing Node 20 from the runners, and until then anything still targeting it
+# is force-run on Node 24 with a deprecation warning. actions/configure-pages,
+# upload-pages-artifact and deploy-pages are left on their current tags: GitHub
+# publishes the Node 24 update onto those major tags directly.
 permissions:
   contents: write
   pages: write
@@ -24,14 +29,14 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - name: Cache PlatformIO
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.platformio
@@ -74,7 +79,7 @@ jobs:
             0x10000  $BUILD/firmware.bin
           ls -la ../dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: airstream-weather-firmware
           path: dist/airstream-weather.bin
