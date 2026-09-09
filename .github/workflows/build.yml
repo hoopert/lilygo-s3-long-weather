@@ -87,6 +87,13 @@ jobs:
           sed "s/__VERSION__/${{ steps.version.outputs.version }}/" \
             tools/web-installer/manifest.json > site/manifest.json
 
+      # configure-pages provisions the Pages site and resolves its URL. Without
+      # it, deploy-pages has no site to deploy into and fails in a couple of
+      # seconds, long before it touches the artifact.
+      - name: Configure Pages
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+        uses: actions/configure-pages@v5
+
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         with:
@@ -111,9 +118,14 @@ jobs:
     permissions:
       pages: write
       id-token: write
+    # Pages allows one deployment at a time. Scoped to this job so ordinary PR
+    # builds are not serialized behind it.
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
