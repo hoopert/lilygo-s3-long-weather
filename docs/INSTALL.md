@@ -132,34 +132,52 @@ default:
 
 ### If `build` is green but `deploy-pages` is red
 
-The firmware compiled and the Pages artifact uploaded fine; only the deployment
-was refused. `actions/deploy-pages` fails within a couple of seconds when there
-is no Pages site for it to deploy into — it never gets as far as the artifact.
+Everything that produces the deliverable worked and only the deployment was
+refused. Several unrelated causes produce this same symptom — a red deploy in
+about two seconds under a green build — so read the failed job before guessing.
 
-The workflow needs **`actions/configure-pages`** to run before the artifact is
-uploaded. That step is what provisions the site and resolves its URL; setting
-the Source dropdown to "GitHub Actions" by itself is not enough, and its absence
-is easy to miss because the build job stays green and only the deploy goes red.
+**The single most useful signal is whether the job ran any steps at all.**
 
-Check these in order — every one of them fails the same way, in about two
-seconds, with the build job still green, so the symptom does not tell you which
-you are looking at:
+#### The job shows *no steps*, not even "Set up job"
 
-1. **The repository's default branch is `main`.** GitHub creates the
-   `github-pages` environment with a deployment branch rule that only permits
-   deployments from the *default branch*. If the default is still some other
-   branch, a deploy triggered by a push to `main` is refused outright — the
-   Source setting can be perfectly correct and it will still fail. Check
-   Settings → General → Default branch.
-2. **Source** is `GitHub Actions`, not "Deploy from a branch"
+It was refused at the **environment gate**, before any action ran. Check:
+
+> **Settings → Environments → `github-pages` → Deployment branches and tags**
+
+GitHub creates that environment with a rule permitting only the default branch
+*as it was at the time the environment was created*. Changing the repository's
+default branch later does **not** rewrite that rule, so a deploy from `main` is
+refused by a rule still naming some other branch. This is the one that bit this
+repository.
+
+Either allow all branches, or add `main`. Allowing all branches is safe here
+because `.github/workflows/build.yml` already gates the deploy job with
+`if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')` —
+that `if:` is what restricts deployments, and it survives branch renames.
+
+#### The job ran steps and one of them failed
+
+Then it is the deployment itself. Check, in order:
+
+1. **Source** is `GitHub Actions`, not "Deploy from a branch"
    (Settings → Pages → Build and deployment).
-3. **`actions/configure-pages` runs before the artifact upload** — see above.
-4. **Action versions** match what GitHub's own sample workflow currently emits.
-   Settings → Pages → *Static HTML* → **Configure** prints one; it is also
-   prefilled with the default branch name, which makes it a quick way to check
-   item 1.
-5. **Permissions** include `pages: write` and `id-token: write`. They are set at
+2. **`actions/configure-pages` runs before the artifact upload.** That step
+   provisions the site and resolves its URL; the Source dropdown alone is not
+   enough.
+3. **Action versions** match what GitHub's own sample workflow currently emits
+   (Settings → Pages → *Static HTML* → **Configure** prints one). A version that
+   no longer resolves fails fast too.
+4. **Permissions** include `pages: write` and `id-token: write`. They are set at
    the workflow level here and repeated on the deploy job.
+
+Do **not** click **Configure** on either starter-workflow card on the Pages
+settings page. Those generate a second workflow that competes for the same
+deployment, and the Static HTML one publishes the whole repository root rather
+than the installer. This project builds its own `site/` directory instead.
+
+Jekyll is not involved at any point. Jekyll processing only applies to
+branch-sourced Pages sites; an Actions-sourced deploy serves the uploaded
+artifact verbatim, so there is nothing to disable and no `.nojekyll` needed.
 
 To cut a release that `tools/flash.sh` can download from:
 
