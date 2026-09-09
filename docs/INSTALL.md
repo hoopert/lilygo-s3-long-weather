@@ -120,6 +120,42 @@ the trailer's weather offline — and then reboots into the setup portal.
 
 ---
 
+---
+
+## Publishing the installer (maintainers)
+
+The web installer is a GitHub Pages site built by `.github/workflows/build.yml`
+on every push to `main`. It needs one repository setting that is **not** the
+default:
+
+> **Settings → Pages → Build and deployment → Source: _GitHub Actions_**
+
+### If `build` is green but `deploy-pages` is red
+
+The firmware compiled and the Pages artifact uploaded fine; only the deployment
+was refused. `actions/deploy-pages` fails within a couple of seconds when it
+cannot find a Pages site to deploy into. Two things cause that:
+
+1. **Source is still "Deploy from a branch"** (the default). The Pages API will
+   not create a deployment for a branch-sourced site. Change it to
+   "GitHub Actions".
+2. **Pages was enabled after the run started.** The setting is correct, but the
+   site did not exist yet when the job asked for it. Nothing is wrong — the
+   next run succeeds.
+
+Either way the fix is the same and needs no push: **re-run the failed job from
+the Actions tab**, or trigger the workflow manually (it accepts
+`workflow_dispatch`).
+
+To cut a release that `tools/flash.sh` can download from:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
