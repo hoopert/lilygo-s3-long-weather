@@ -1,0 +1,11 @@
+# PlatformIO
+firmware/.pio/
+firmware/lib/
+firmware/platformio-local.ini
+.vscode/
+
+# Build outputs
+dist/
+*.bin
+*.elf
+*.map
