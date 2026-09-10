@@ -463,6 +463,8 @@ const ScreenDef kDef = {
     ICON_SUN,
     create,
     update,
+    0,                                             // home
+    UI_SWIPE_LEFT | UI_SWIPE_RIGHT | UI_SWIPE_DOWN,
 };
 
 }  // namespace

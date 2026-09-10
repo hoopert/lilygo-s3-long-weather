@@ -28,6 +28,10 @@ bool      s_slider_held = false;
 
 void dismiss_cb(lv_event_t *e) {
     LV_UNUSED(e);
+    // A swipe the sheet declined still ends in a release, and LVGL turns that
+    // into a click on the backdrop. Without this, a sideways drag on Quick
+    // Settings would close it by the back door.
+    if (ui_gesture_recent()) return;
     overlays_dismiss();
 }
 
@@ -176,14 +180,23 @@ lv_obj_t *pill(lv_obj_t *parent, int x, int y, int w, int h, const char *text,
 namespace {
 // Overlays live on LVGL's top layer, which is created with a NULL parent and so
 // does not carry LV_OBJ_FLAG_GESTURE_BUBBLE. That means gestures made over an
-// overlay stop at the top layer and never reach the screen's handler, so the
-// swipe-to-dismiss bindings have to be registered here rather than inherited.
+// overlay stop at the top layer and never reach the screen's handler, so they
+// are fed into the same dispatcher from here.
 void layer_gesture_cb(lv_event_t *e) {
     LV_UNUSED(e);
-    ui_note_gesture();
-    if (s_root != nullptr) overlays_dismiss();
+    ui_handle_swipe(lv_indev_get_gesture_dir(lv_indev_get_act()));
 }
 }  // namespace
+
+uint8_t overlays_swipes() {
+    switch (s_kind) {
+        case OverlayKind::Hour:
+        case OverlayKind::Now:           return UI_SWIPE_UP | UI_SWIPE_DOWN;
+        case OverlayKind::QuickSettings: return UI_SWIPE_UP;
+        case OverlayKind::None:          break;
+    }
+    return UI_SWIPE_NONE;
+}
 
 void overlays_init() {
     lv_obj_clear_flag(lv_layer_top(), LV_OBJ_FLAG_CLICKABLE);
@@ -367,6 +380,11 @@ void overlays_show_quick_settings() {
     lv_obj_set_style_bg_color(slider, lv_color_hex(COL_OAT), LV_PART_KNOB);
     lv_obj_set_style_pad_all(slider, 5, LV_PART_KNOB);
     lv_obj_add_event_cb(slider, slider_cb, LV_EVENT_ALL, nullptr);
+    // The slider owns every touch that starts on it. Without this, LVGL also
+    // reports the drag as a horizontal gesture on the layer above, and the
+    // sheet used to close - and the screen beneath used to change - halfway
+    // through setting the brightness.
+    lv_obj_clear_flag(slider, LV_OBJ_FLAG_GESTURE_BUBBLE);
     s_qs_slider = slider;
 
     s_qs_auto_pill = pill(root, LAYOUT_SAFE + 316, 64, 78, 24, "AUTO",

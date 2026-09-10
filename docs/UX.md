@@ -26,21 +26,43 @@ because it was unimportant.
 | **Tap** | An hour column | Hour Detail overlay for that hour |
 | **Tap** | The "Now" zone (left 208px) | Now Detail overlay |
 | **Tap** | Anywhere, with an overlay open | Close it |
-| **Swipe left** | Anywhere | Next screen |
-| **Swipe right** | Anywhere | Previous screen |
-| **Swipe down** | Anywhere on a screen | Quick Settings sheet |
-| **Swipe up / down** | With an overlay open | Close it |
+| **Swipe right** (finger left → right) | Today | Opens the System drawer, sliding in from the left |
+| **Swipe left** (finger right → left) | System | Puts the drawer away, sliding out to the left |
+| **Swipe down** | Any screen | Quick Settings sheet |
+| **Swipe up** | Quick Settings | Close it |
+| **Swipe up / down** | Hour or Now detail | Close it |
 | **Long press (700ms)** | Anywhere | Force a forecast refresh |
 
-Screens wrap in both directions, so you can never get to a place you cannot get
-back from by continuing in the same direction.
+Anything not in the table is dropped: a swipe left on Today does nothing, a
+swipe right on System does nothing, a sideways drag on Quick Settings adjusts
+the brightness slider and nothing else.
 
-### Why dismiss is over-served
+### Interaction contexts
 
-Tap, swipe up, *and* swipe down all close an overlay. Three ways to leave is
-redundant by design: the single fastest way to make a touch panel feel broken is
-to be stuck in a view with no obvious way out, and on a wall-mounted screen there
-is no back button, no home gesture, and no way to force-quit.
+Every place a finger can land is a *context* - a screen, or an overlay on top
+of one - and each context declares the swipes it accepts. One dispatcher
+(`ui_handle_swipe()` in `screen_manager.cpp`) consults the active context and
+either performs the swipe or drops it. It never falls through to whatever is
+underneath. Two consequences:
+
+- **Screens live at positions on a strip, not in a carousel.** Today is home
+  (position 0). System is a drawer at -1. A swipe only moves to a neighbour that
+  exists, so the strip cannot wrap round on itself. Farther from home stacks on
+  top: a screen slides in *over* its neighbour on the way out and slides *out*
+  to reveal it on the way back.
+- **A control that owns a drag keeps it.** The brightness slider clears
+  `LV_OBJ_FLAG_GESTURE_BUBBLE`, so a drag along it is a drag and only a drag.
+  Quick Settings additionally accepts only swipe-up, so even a sideways flick
+  on its background does nothing.
+
+### Why dismiss is over-served on the detail overlays
+
+Tap, swipe up, *and* swipe down all close the Hour and Now overlays. Three ways
+to leave is redundant by design: the single fastest way to make a touch panel
+feel broken is to be stuck in a view with no obvious way out, and on a
+wall-mounted screen there is no back button, no home gesture, and no way to
+force-quit. Quick Settings is the one exception, for the slider's sake; its
+hint says which way out.
 
 ### Swipe / tap disambiguation
 

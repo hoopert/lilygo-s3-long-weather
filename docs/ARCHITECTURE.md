@@ -146,24 +146,38 @@ void update(lv_obj_t *root) {
     lv_label_set_text_fmt(s_fresh, "%d%%", read_fresh_water_percent());
 }
 
-const ScreenDef kDef = { "Tanks", ICON_DROP, create, update };
+// Position +1: to the right of Today, reached by swiping left from it and
+// left again to come back. Accept left/right for navigation and down for
+// Quick Settings. See screen_manager.h, "Interaction contexts".
+const ScreenDef kDef = {
+    "Tanks", ICON_DROP, create, update,
+    +1, UI_SWIPE_LEFT | UI_SWIPE_RIGHT | UI_SWIPE_DOWN,
+};
 
 }  // namespace
 
 const ScreenDef &screen_tanks_def() { return kDef; }
 ```
 
-**2.** Register it in `main.cpp`. Registration order is swipe order:
+**2.** Register it in `main.cpp`. Order does not matter; the screen's
+`position` places it on the strip:
 
 ```cpp
-screens_register(screen_today_def());
-screens_register(screen_tanks_def());     // <- new
-screens_register(screen_system_def());
+screens_register(screen_today_def());     // position  0, home
+screens_register(screen_system_def());    // position -1, the drawer on the left
+screens_register(screen_tanks_def());     // position +1  <- new
 ```
 
 That is all. Navigation, the slide transition, the page indicator, gesture
-routing, and the update cadence are all handled. The registry holds eight
-screens; raise `kMaxScreens` if you need more.
+routing, and the update cadence are all handled. Positions must be unique and
+one of them must be 0. The registry holds eight screens; raise `kMaxScreens` if
+you need more.
+
+A screen's `swipes` mask is the whole of its gesture policy. A screen with a
+horizontal control of its own - a slider, a scrolling list - should omit the
+direction that control uses, and the control itself should clear
+`LV_OBJ_FLAG_GESTURE_BUBBLE` so a drag on it never reaches the dispatcher (the
+Quick Settings slider is the worked example, in `overlays.cpp`).
 
 ### Conventions worth keeping
 
