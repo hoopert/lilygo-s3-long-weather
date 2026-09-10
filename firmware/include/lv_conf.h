@@ -28,8 +28,7 @@
 //
 // LVGL's own heap stays in internal SRAM, where it is roughly an order of
 // magnitude faster than PSRAM for the many small allocations widget trees make.
-// LV_DISP_ROT_MAX_BUF below is carved out of this pool, so the two have to be
-// sized together. The draw buffers are separate and allocated in main.cpp.
+// The frame buffer is separate, in PSRAM, allocated in main.cpp.
 // ---------------------------------------------------------------------------
 #define LV_MEM_CUSTOM 0
 #define LV_MEM_SIZE   (64U * 1024U)
@@ -57,12 +56,6 @@
 #define LV_DRAW_COMPLEX          1   // shadows, masks, arcs
 #define LV_SHADOW_CACHE_SIZE     0
 #define LV_IMG_CACHE_DEF_SIZE    0
-
-// Scratch space for software rotation. LVGL rotates each dirty area in chunks
-// of this size, so a bigger buffer means fewer chunks and fewer SPI address
-// windows per redraw. It is taken from the LV_MEM pool above, so it cannot be
-// grown without growing that too.
-#define LV_DISP_ROT_MAX_BUF      (16L * 1024L)
 
 // ---------------------------------------------------------------------------
 // Fonts

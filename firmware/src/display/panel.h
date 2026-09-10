@@ -28,9 +28,20 @@ void panel_boot_probe();
 // never heard a command from one that is on and showing whatever it was sent.
 void panel_report();
 
-// Blits a rectangle of RGB565 pixels. Blocks until the transfer completes.
+// Blits a rectangle of RGB565 pixels in the panel's own 180x640 space. Blocks
+// until the transfer completes. Partial windows are supported by the
+// controller but the UI never uses them - see panel_push_frame().
 void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                        const uint16_t *pixels);
+
+// Streams one complete UI frame (UI_WIDTH x UI_HEIGHT, RGB565 in panel byte
+// order, row-major) to the glass, rotating it into the panel's 180x640 space
+// on the way per UI_ROTATION. This is the path LVGL uses: the UI is rendered
+// unrotated into a full-size buffer and the driver turns it, so every write
+// to the panel is the same full-screen window as the boot self-test - the
+// one window pattern proven on this glass. Blocks for the whole transfer,
+// about 25ms.
+void panel_push_frame(const uint16_t *frame);
 
 // Fills the whole panel: rows [0, split) in `top`, rows [split, 640) in
 // `bottom`. Talks to the panel directly with no LVGL involved, which is what

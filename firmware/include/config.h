@@ -12,19 +12,21 @@
 // Orientation
 //
 // The panel is physically 180x640 (tall and narrow). The UI is designed for
-// 640x180 (wide and short), so LVGL rotates the framebuffer by 90 degrees.
+// 640x180 (wide and short). LVGL renders it unrotated and the panel driver
+// turns each frame on the way to the glass (panel_push_frame), applying the
+// matching inverse to touch (touch_read_cb). The LVGL enum is used purely as
+// a label for which way round; LVGL's own sw_rotate is not involved.
 //
 // If the UI comes up upside-down once mounted, swap ROT_270 for ROT_90 here.
-// That is the entire fix: LVGL applies the same rotation to touch input, so
-// TOUCH_INVERT_X/Y below stay as they are (lv_indev.c, indev_pointer_proc).
+// That is the entire fix - touch follows automatically.
 // ---------------------------------------------------------------------------
 #define UI_ROTATION      LV_DISP_ROT_270
 #define UI_WIDTH         PANEL_HEIGHT   // 640 - the app-space width
 #define UI_HEIGHT        PANEL_WIDTH    // 180 - the app-space height
 
-// If taps land mirrored, flip these. LVGL already applies the 90-degree
-// rotation to touch input; these correct for panel-to-digitiser mounting
-// differences on top of that. The System screen has a Touch Test that prints
+// If taps land mirrored, flip these. The rotation above is already applied
+// to touch input; these correct for panel-to-digitiser mounting differences
+// on top of that. The System screen has a Touch Test that prints
 // raw and mapped coordinates so you can check this in about ten seconds.
 #define TOUCH_INVERT_X   false
 #define TOUCH_INVERT_Y   false
@@ -45,14 +47,15 @@
 //                        LVGL rotates the raw coordinates itself.
 // ---------------------------------------------------------------------------
 #define PANEL_BOOT_SELF_TEST    1
-#define PANEL_BOOT_SELF_TEST_MS 3000
+#define PANEL_BOOT_SELF_TEST_MS 600
 
 // Boot probe: before the self-test, try each candidate panel init in turn
 // for PANEL_BOOT_PROBE_HOLD_MS each, printing a step number to the console.
 // Set to 1 only while finding out what a panel wants; it lengthens every boot.
-// Round one (8 steps) found the fault - the vendor's short init table; round
-// two (5 steps, current) bisects that table. Set to 0 once it has answered.
-#define PANEL_BOOT_PROBE         1
+// It has answered: round one found the vendor's short init table at fault and
+// round two bisected it to the missing delay between SLPIN and SLPOUT. Left in
+// place, off, for the next panel revision.
+#define PANEL_BOOT_PROBE         0
 #define PANEL_BOOT_PROBE_HOLD_MS 2500
 
 // ---------------------------------------------------------------------------
