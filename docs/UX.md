@@ -25,21 +25,23 @@ because it was unimportant.
 |---|---|---|
 | **Tap** | An hour column | Hour Detail panel, expanding out of that column |
 | **Tap** | A neighbour hour beside the Hour Detail panel | Re-points the panel at that hour without closing it |
+| **Tap** | A day column on Forecast | Day Detail panel, expanding out of that column; neighbour days re-point it the same way |
 | **Tap** | The "Now" zone (left 208px) | Now Detail overlay |
 | **Tap** | The pressure cell in Now Detail | Pressure Detail overlay |
 | **Tap** | The panel, or anywhere else, with an overlay open | Close it |
-| **Swipe right** (finger left → right) | Today | Opens the System drawer, sliding in from the left |
+| **Swipe edge to edge** (either way, the touch beginning within 30px of one side and ending within 30px of the other) | Any screen | The System gate: a settings button in the middle of the screen with three grey dots beside it |
+| **Tap ×3** (each within a second of the last) | The gate button | Dots turn turquoise one per tap; the third opens the System drawer, sliding in from the left. A pause fades the button |
 | **Swipe left** (finger right → left) | System | Puts the drawer away, sliding out to the left |
 | **Swipe left** (finger right → left) | Today | Opens the ten-day Forecast, sliding in from the right |
 | **Swipe right** (finger left → right) | Forecast | Puts it away, sliding out to the right |
 | **Swipe down** | Any screen | Quick Settings sheet drops from the top edge |
 | **Swipe up** | Quick Settings | Close it (so does a tap on the dimmed content below) |
-| **Swipe up / down** | Hour, Now or Pressure detail | Close it |
+| **Swipe up / down** | Hour, Day, Now or Pressure detail | Close it |
 | **Long press (700ms)** | Anywhere | Force a forecast refresh |
 
 Anything not in the table is dropped: a swipe left on Forecast does nothing, a
-swipe right on System does nothing, a sideways drag on Quick Settings adjusts
-the brightness slider and nothing else.
+swipe right on Today or System does nothing, a sideways drag on Quick Settings
+adjusts the brightness slider and nothing else.
 
 ### Interaction contexts
 
@@ -54,6 +56,22 @@ underneath. Two consequences:
   exists, so the strip cannot wrap round on itself. Farther from home stacks on
   top: a screen slides in *over* its neighbour on the way out and slides *out*
   to reveal it on the way back.
+- **A drawer is off the strip.** A screen flagged `UI_SCREEN_DRAWER` has no
+  dot in the page indicator and no swipe reaches it; only the gate does.
+
+### The System gate
+
+System holds addresses and a button that forgets the Wi-Fi. On a wall panel
+in a trailer that is not something one stray swipe should reach, so the
+drawer is not on the strip and the wayfinder does not admit it exists. The
+way in is deliberate: a swipe that reaches from one edge of the glass to the
+other (judged on the raw touch, in the driver - LVGL's gesture knows only the
+direction) puts a round settings button in the middle of whatever is showing,
+with three small grey dots to its right. Each tap lights the next dot
+turquoise, left to right; the third opens the drawer. Each tap must come
+within a second of the last (or of the button's appearance), otherwise the
+button fades and the count starts over. Timings are `UI_EDGE_SWIPE_PX`,
+`UI_GATE_TAPS` and `UI_GATE_WINDOW_MS` in `config.h`.
 - **A control that owns a drag keeps it.** The brightness slider clears
   `LV_OBJ_FLAG_GESTURE_BUBBLE`, so a drag along it is a drag and only a drag.
   Quick Settings additionally accepts only swipe-up, so even a sideways flick
@@ -110,7 +128,7 @@ under your thumb instead of after you let go.
 |---|---|---|
 | 0 | **Today** (home) | Current conditions on the left: the hero temperature, `FEELS 71°` under it, then the day's high in sunset and low in sky (colour is the label), then the clock and the town; the condition glyph top-right with its name set small beneath it. On the right, a column of row labels (`TEMP`, `UV`, a droplet and `%`, `WIND`) and the next seven hours - hour, glyph, temperature, the trend ribbon, UV index on a sky-to-purple scale, chance of rain as a bare number with its bar (`-` when there is none), wind - each hour a tap away from Hour Detail. The design drew ten columns; eight was the first change asked for on the glass, seven with labels the second. |
 | +1 | **Forecast** (swipe left) | Ten days in ten columns: weekday, daytime glyph, high on the colour ramp, low, and the chance of precipitation as a bare number behind a droplet - or a snowflake when the day's weather is snow; `-` when there is none. Today is on a raised slab. |
-| −1 | **System** (swipe right) | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
+| −1 | **System** (through the gate; a drawer, not on the wayfinder) | A title bar with the one action, **FORGET NETWORK**, which asks for a second tap before rebooting into the setup portal, and the Wi-Fi signal bars at the edge. Below a rivet-dotted rule, three columns of label-over-value cells: network, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down); and memory as two bars, heap and PSRAM, filled by what is in use and coloured by what is left. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
 
 Three screens on one strip, home in the middle. A page indicator sits
 at the bottom centre of every screen — a short turquoise bar for the current
@@ -119,7 +137,7 @@ rather than as something pressable.
 
 ## Overlays
 
-All four live on LVGL's top layer, so they survive a screen change and are
+All five live on LVGL's top layer, so they survive a screen change and are
 written once rather than per screen.
 
 **Hour Detail** — a 300px panel in the centre of the strip that expands out
@@ -132,6 +150,14 @@ cardinal, gusts. Either side, three neighbour hours at full strength - hour,
 glyph, temperature - each a tap target that re-points the panel without
 closing it. A tap on the panel closes it; no printed hint, it is learned in
 one tap.
+
+**Day Detail** — the same panel, opened from a column on the Forecast screen,
+holding what a whole day is planned around rather than what an hour feels
+like: the date in Title 30 with the day's glyph; high and low together (told
+apart by colour, as on Today), the UV peak on its sky-to-purple scale, the
+sunrise; the chance of rain with the day's accumulation as its suffix, the
+strongest wind, the sunset. Three neighbour days either side - weekday,
+glyph, high - re-point it.
 
 **Now Detail** — a 192px sun arc from sunrise to sunset, the lower half
 below the screen, with the sun itself riding the track on a ground-coloured
@@ -200,7 +226,7 @@ because nothing on the panel knows how long the router will take.
 | Connection lost, data still valid | Everything stays on screen with a small orange Wi-Fi-off mark; the forecast's age is one swipe down, in Quick Settings |
 
 The setup network is WPA2. Its password is eight digits (WPA2's minimum),
-generated on first boot, kept in NVS, and rotated by **CHANGE NETWORK**; it
+generated on first boot, kept in NVS, and rotated by **FORGET NETWORK**; it
 never appears in the repository or the firmware image.
 
 ## Motion

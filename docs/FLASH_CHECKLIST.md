@@ -5,7 +5,7 @@ flashing, in the order it will appear, with what "right" looks like. Each
 row is something no render could verify - touch targets, live data, motion.
 Tick what passes; anything else is the fix round.
 
-## First boot (fresh unit, or after CHANGE NETWORK)
+## First boot (fresh unit, or after FORGET NETWORK)
 
 | Check | Right looks like |
 |---|---|
@@ -39,6 +39,14 @@ Tick what passes; anything else is the fix round.
 | Beyond the strip | From the last column, the right-hand neighbours are hours the strip does not show; tapping one still works. |
 | Values | Six big numbers: temperature (ramp colour), feels-like, humidity; rain chance with the amount in small type after it, wind with its cardinal, gusts, the last two with `MPH`. |
 
+## Day Detail
+
+| Check | Right looks like |
+|---|---|
+| Open | On the Forecast screen, tapping a day grows the same panel out of that column. Three days show either side (`TODAY` in turquoise where it is one of them); tapping one moves the panel. |
+| Header | `TODAY · Partly cloudy` or `FORECAST · ...`, then the date (`Mon, Sep 14`) and the day's glyph on the right. |
+| Values | `HIGH · LOW` as two numbers, sunset-red and sky-blue; `UV MAX` on the sky-to-purple scale; `SUNRISE` in oat with `AM` small; `RAIN CHANCE` with the day's amount after it; `WIND MAX` with `MPH`; `SUNSET` in sunset with `PM` small. |
+
 ## Now Detail and Pressure Detail
 
 | Check | Right looks like |
@@ -54,8 +62,10 @@ Tick what passes; anything else is the fix round.
 |---|---|
 | Quick Settings | Swipe down: a full screen. A brightness bar the full width and a fingertip tall, in nine divisions, with the level and a status line (`SUN-DRIVEN · DIMS AT 7:18 PM` or `MANUAL · AUTO AT DUSK`) and an `AUTO` pill; below, the forecast's age with a refresh glyph beside it, and the Wi-Fi bars with the SSID. No IP or update address here (System has them). |
 | The bar | Tap a division: the bar fills to it and the glass changes brightness at once. Drag: the fill and the backlight follow the finger with no lag. Neither closes the screen or changes screen. Tap empty space or swipe up to close. |
-| System | Three wide columns; `airstream-weather.local` on one line; memory in the title bar with a dot; uptime, version and build date in the footer; no brightness row. |
-| CHANGE NETWORK | Two taps, then the panel reboots to the setup screen with a **new** password. |
+| The wayfinder | Two marks at the bottom of Today and Forecast: a turquoise bar for where you are, a grey dot for the other. Nothing for System. |
+| The System gate | Drag a finger from one edge of the glass right across to the other and let go: a round settings button appears in the middle of the screen with three grey dots to its right. Wait a second: it fades. Do it again and tap it three times quickly: the dots turn turquoise one per tap and the third tap slides System in from the left. A swipe that starts or ends short of the edges does nothing (on Today, a plain swipe right now does nothing at all). |
+| System | No dot in the wayfinder and none of its own. A title bar with `FORGET NETWORK` and the signal bars at the edge; three columns of cells with no dividers; heap and PSRAM as two small bars (turquoise, oat when tight, sunset when critical); uptime, version and build date in the footer; no brightness row. Swipe left puts it away. |
+| FORGET NETWORK | Two taps, then the panel reboots to the setup screen with a **new** password. |
 
 ## Night Mode (after 23:00 local, brightness on Auto, no touch for 30s)
 

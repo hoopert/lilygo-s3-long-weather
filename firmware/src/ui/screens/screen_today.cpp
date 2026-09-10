@@ -830,7 +830,7 @@ const ScreenDef kDef = {
     create,
     update,
     0,                                             // home
-    UI_SWIPE_LEFT | UI_SWIPE_RIGHT | UI_SWIPE_DOWN,
+    UI_SWIPE_LEFT | UI_SWIPE_DOWN,                 // System is behind the gate, not a swipe
 };
 
 }  // namespace

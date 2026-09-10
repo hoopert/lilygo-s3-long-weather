@@ -51,6 +51,16 @@ void fmt_clock_compact(time_t utc, long offset, char *out, size_t len) {
     snprintf(out, len, "%d:%02d%c", h12, m, (h < 12) ? 'A' : 'P');
 }
 
+void fmt_date(time_t utc, long offset, char *out, size_t len) {
+    static const char *const kDays[7]    = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+    static const char *const kMonths[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    time_t local = utc + offset;
+    struct tm t;
+    gmtime_r(&local, &t);
+    snprintf(out, len, "%s, %s %d", kDays[t.tm_wday], kMonths[t.tm_mon], t.tm_mday);
+}
+
 void fmt_weekday(time_t utc, long offset, char *out, size_t len) {
     static const char *const kDays[7] = {"THU", "FRI", "SAT", "SUN", "MON", "TUE", "WED"};
     long long local = static_cast<long long>(utc) + offset;

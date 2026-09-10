@@ -181,6 +181,11 @@ routing, and the update cadence are all handled. Positions must be unique and
 one of them must be 0. The registry holds eight screens; raise `kMaxScreens` if
 you need more.
 
+A screen flagged `UI_SCREEN_DRAWER` in its `flags` (System is the one) is
+off the wayfinder: no dot in the page indicator, none of its own, and no
+swipe reaches it - only `screens_show_position()`, which the System gate in
+`overlays.cpp` calls after its three taps. See docs/UX.md, "The System gate".
+
 A screen's `swipes` mask is the whole of its gesture policy. A screen with a
 horizontal control of its own - a slider, a scrolling list - should omit the
 direction that control uses, and the control itself should clear
@@ -257,7 +262,7 @@ comments pointing at each other.
 | `PANEL_BOOT_PROBE` cycles alternatives at boot | When set, boot walks candidate init tables for 2.5s each with a two-colour fill and a step number on the console. One flash answers "which does this glass want". It is what found the row above. Leave it at 0 once known - it lengthens every boot. |
 | Touch coordinates **are** rotated by us | LVGL sees the UI unrotated, so `touch_read_cb()` maps the digitiser's raw 180×640 point into 640×180 with the inverse of `panel_push_frame()`'s turn. See [Rotation](#rotation). |
 | Gesture limits are not settable in `lv_conf.h` | LVGL 8.4 hardcodes `LV_INDEV_DEF_GESTURE_LIMIT` and `LV_INDEV_DEF_LONG_PRESS_TIME` without an `#ifndef` guard. They are set on the indev driver in `main.cpp`. |
-| Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. Hour Detail's neighbour taps go further and apply on the next `overlays_tick()`, because the re-render deletes the tapped object. |
+| Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. Hour and Day Detail's neighbour taps go further and apply on the next `overlays_tick()`, because the re-render deletes the tapped object. The System gate is requested from the touch driver and built on the next tick for the same reason. |
 | `opa` is not inherited in LVGL 8.4 - but it is recursive | `LV_STYLE_OPA` carries no inherit flag, so a child does not *read* its parent's opacity; the draw path multiplies them (`lv_obj_get_style_opa_recursive`), which is what lets Today's Night Mode fade a whole layer by setting one value on the container. |
 | `lv_line` keeps a pointer to its points | It does not copy them. Every polyline here (`theme_rivet_row()`, `overlays.cpp`'s `polyline()`) allocates its points in LVGL's heap and frees them from an `LV_EVENT_DELETE` handler. A stack array works until the function returns. |
 | `transform_angle` / `transform_zoom` draw nothing here | Any transformed widget is rendered through a layer with alpha, and `lv_draw_sw_layer_create` refuses that without `LV_COLOR_SCREEN_TRANSP`, which LVGL 8.4 ties to 32-bit colour. The symptom is a `Rendering this widget needs LV_COLOR_SCREEN_TRANSP 1` warning on every frame and a blank where the widget should be. The wind arrow is therefore one of eight compass glyphs (`wind_arrow_glyph()`), and press feedback is a fill change with no scale. |

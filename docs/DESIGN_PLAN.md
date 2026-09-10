@@ -250,6 +250,16 @@ glyph. Night Mode is no longer a dimmer weather layout: it is a clock,
 (`icons_xl`, 84px) and the next sunrise on the other side, both at 69%,
 because a nightlight has one thing to say and two worth whispering.
 
+Fourth: a tap on a Forecast day opens **Day Detail**, the Hour Detail
+panel's shape holding a day's numbers (high and low, UV peak, sunrise;
+rain chance and amount, strongest wind, sunset), with three neighbour days
+either side. The System drawer leaves the wayfinder: `UI_SCREEN_DRAWER`
+hides it from the page indicator and from swipes, and the way in is the
+**System gate** - an edge-to-edge swipe puts a settings button mid-screen
+that wants three quick taps, its three dots lighting one per tap. The
+hourly strip's rain and the Forecast's precipitation both lose the percent
+sign to their row label and icon, and read `-` for no chance.
+
 Quick Settings (§4) is no longer a sheet: the whole screen, with a nine-
 division brightness bar a fingertip tall that is tapped for a preset or
 dragged for fine tuning, both applied to the glass at once; the IP and

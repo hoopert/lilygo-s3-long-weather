@@ -18,6 +18,7 @@
 void overlays_init();
 
 void overlays_show_hour(int hour_index);
+void overlays_show_day(int day_index);    // from a column on the Forecast screen
 void overlays_show_now();
 void overlays_show_pressure();   // from the pressure cell in Now Detail
 void overlays_show_quick_settings();
@@ -32,3 +33,10 @@ uint8_t overlays_swipes();
 // Refresh live values in whichever overlay is open (brightness, time since
 // last update). Cheap; call from the UI tick.
 void overlays_tick();
+
+// The System gate. The touch driver reports a swipe that reached from one
+// edge of the glass to the other; the next tick puts a settings button in
+// the middle of the screen with three dots beside it. Three taps, each
+// within UI_GATE_WINDOW_MS of the last, light the dots in turn and open the
+// System drawer; a pause lets it fade. See docs/UX.md, "The System gate".
+void overlays_note_edge_swipe();
