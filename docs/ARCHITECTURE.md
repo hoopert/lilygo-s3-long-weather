@@ -69,8 +69,8 @@ The panel is physically 180×640. The UI is 640×180. LVGL bridges that with
 s_disp_drv.hor_res      = PANEL_WIDTH;   // 180 - the physical panel
 s_disp_drv.ver_res      = PANEL_HEIGHT;  // 640
 s_disp_drv.sw_rotate    = 1;
-s_disp_drv.rotated      = LV_DISP_ROT_90;
-s_disp_drv.full_refresh = 1;             // required alongside sw_rotate
+s_disp_drv.rotated      = UI_ROTATION;    // LV_DISP_ROT_270 - config.h
+s_disp_drv.full_refresh = 0;             // must be 0 with sw_rotate - see below
 ```
 
 `hor_res` and `ver_res` describe the **panel**, not the UI. LVGL then reports
@@ -233,8 +233,9 @@ comments pointing at each other.
 | `sw_rotate` + `full_refresh` is a black screen | Stock LVGL refuses the combination and returns before flushing. See [Rotation](#rotation). Copying LilyGO's example verbatim walks straight into this, because theirs runs on a patched LVGL. |
 | Serial can starve the main loop | With USB CDC on boot and no host attached, each write blocks up to 100ms. Anything logging per-frame makes the UI, the button and the Wi-Fi portal all go unresponsive while the device looks fine. `main.cpp` sets `Serial.setTxTimeoutMs(0)` so logging drops instead of blocking. |
 | The panel can be asked what state it is in | `panel_report()` reads RDDID / RDDPM / RDDCOLMOD back over QSPI opcode `0x03` at 4MHz on a second, `NO_DUMMY` device handle and prints them at boot. A black screen with `display ON, sleep out` on the console is a pixel-path or backlight fault; `no reply on QSPI` is a wiring, power or reset fault. Don't debug a black panel without this line. |
-| The pixel write path is the shipped factory binary's, not the vendor's source | LilyGO's `AXS15231B.cpp` has two pixel paths behind `#ifdef LCD_SPI_DMA`. The binary they ship (`firmware/factory-cst3530.bin` - the only thing proven to light this glass) is built with it defined: CS held low for the whole frame, first chunk as opcode `0x32` + `0x002C00`, later chunks as raw data with no opcode or address. The `#else` path (CS toggled per chunk, `0x3C` continue) is what the first cut of this driver copied, and it never lit the panel. `kResting` in `panel.cpp` is the shipped configuration, byte for byte, including the 32 stray zero bytes after SLPIN. |
-| `PANEL_BOOT_PROBE` cycles the alternatives | When set, boot walks eight candidate configurations (write path, init table, clock, SPI mode) for 2.5s each with a two-colour fill and a step number on the console. One flash answers "which does this glass want". Leave it at 0 once known - it adds ~30s to boot. |
+| The vendor's short init table leaves this glass black | LilyGO's `AXS15231B.cpp` initialises with just `DISPOFF / SLPIN (+32 zero bytes, no delay) / SLPOUT / DISPON`. On the board this was developed on, that sequence produced a black panel in every write-path, clock and SPI-mode variant tried, and the same write path lit the panel the moment the init was replaced - the DCS-complete sequence (`kInitDcs`: adds NORON, INVOFF, COLMOD 16bpp, WRCTRLD) or either of the vendor's long manufacturer-register tables. Why the vendor's own binary survives its table is unexplained; the panel's verdict wins. Found with the boot probe, not by reading code - three earlier rewrites that reasoned from the vendor source all failed. |
+| The pixel write path is the shipped factory binary's | CS held low for the whole frame, first chunk as opcode `0x32` + `0x002C00`, later chunks as raw data with no opcode or address (`WriteMode::kQuadHeld`). The vendor's `#else` path (CS toggled per chunk, `0x3C` continue) also works; both were probed. |
+| `PANEL_BOOT_PROBE` cycles alternatives at boot | When set, boot walks candidate init tables for 2.5s each with a two-colour fill and a step number on the console. One flash answers "which does this glass want". It is what found the row above. Leave it at 0 once known - it lengthens every boot. |
 | Touch coordinates must **not** be pre-rotated | LVGL already does it. See [Rotation](#rotation). |
 | Gesture limits are not settable in `lv_conf.h` | LVGL 8.4 hardcodes `LV_INDEV_DEF_GESTURE_LIMIT` and `LV_INDEV_DEF_LONG_PRESS_TIME` without an `#ifndef` guard. They are set on the indev driver in `main.cpp`. |
 | Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. |

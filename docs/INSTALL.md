@@ -198,20 +198,16 @@ again. Once the board is already running this firmware the dialog offers
 after reset are the ones that matter:
 
 ```
-[probe] 8 steps, 2500ms each. Watch the glass and note the FIRST step that shows turquoise over orange.
-[probe] step 1/8: factory-exact: short init, QSPI held-CS writes, mode 0, 32MHz
-[probe]   RDDPM=0x9C  (holding)
-...
-[panel] power mode 0x9C: booster on, sleep out, normal mode, display ON
+[panel] readback RDDID=FFFFFFFF RDDPM=FF COLMOD=FF (advisory: reads are unverified on this glass)
 [panel] self-test: turquoise/orange split, backlight full, holding 3000ms
 [touch] CST3530 at 0x58
-[loop] up=35s bl=255/255 flushes=80 heap=136K lvmem=40%
+[loop] up=5s bl=255/255 flushes=80 heap=136K lvmem=40%
 ```
 
-The `[panel] power mode` line is the controller reporting its own state back
-over the bus. It is advisory: LilyGO's driver never reads from the panel, so
-the read format is unverified on this glass and a row of `00`/`FF` does not by
-itself mean the panel is dead.
+The `[panel] readback` line is the controller asked for its own state. On the
+boards seen so far it answers `FF` to everything - the read opcode format is
+unverified on this glass - so it is advisory only. A row of `FF` does not mean
+the panel is dead; the splash does the real talking.
 
 ### Is it the hardware?
 
@@ -238,9 +234,9 @@ nothing in software will fix it.
 | Board never appears as a serial port | Charge-only USB cable. Try another one first; this is by far the most common cause. |
 | Install button greyed out or missing | Browser without Web Serial (Safari, Firefox). Use Chrome, Edge, or Opera. |
 | Flash fails partway | Force download mode: hold BOOT, tap RST, release BOOT, retry. |
-| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). With `PANEL_BOOT_PROBE` on (the default while the panel is being brought up), boot walks eight panel configurations, holding a turquoise-over-orange fill for 2.5s each and printing `[probe] step N/8`. **Note the first step that shows colour** and send it with the `[probe]` lines. If none of the eight shows anything, flash LilyGO's own image (below): if that lights, the fault is still this firmware's and the console output is what will find it; if that is black too, the board is faulty. |
+| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). The panel is driven directly, with no LVGL, for the first seconds after power-on: top half turquoise, bottom half orange, backlight forced full. **If the splash shows** the driver, bus and backlight all work and the fault is LVGL-side - check for `[flush]` lines. **If it is black**, and `PANEL_BOOT_PROBE` is on, note which `[probe] step N` fills lit and send the `[probe]` lines. If nothing lights at all, flash LilyGO's own image (below): if that lights, the fault is this firmware's; if that is black too, the board is faulty. Every 5s the console prints `[loop] up=... bl=... flushes=...`; if that never appears the main loop is hung. |
 | Colors look lurid — reds and blues swapped | `LV_COLOR_16_SWAP` in `firmware/include/lv_conf.h`. It should be `1`. |
-| Display is upside down | Change `UI_ROTATION` in `firmware/include/config.h` from `LV_DISP_ROT_90` to `LV_DISP_ROT_270`, and set both `TOUCH_INVERT_X` and `TOUCH_INVERT_Y` to `true`. |
+| Display is upside down | Swap `UI_ROTATION` in `firmware/include/config.h` between `LV_DISP_ROT_270` and `LV_DISP_ROT_90`. Leave `TOUCH_INVERT_X/Y` alone - LVGL rotates touch input with the display. |
 | Taps land in the wrong place | Swipe to the System screen and watch the **TOUCH / RAW XY** readout while pressing each corner. Then flip `TOUCH_INVERT_X` / `TOUCH_INVERT_Y` to match. |
 | Touch does nothing at all | The System screen shows which controller was detected. `none detected` means neither the AXS15231B at `0x3B` nor the CST3530 at `0x58` answered on I2C — see [HARDWARE.md](HARDWARE.md). |
 | Shows `NO CONNECTION` | Wi-Fi is up but the fetch failed. Check the serial log; the panel retries every 60 seconds on its own. |
