@@ -23,14 +23,16 @@ because it was unimportant.
 
 | Gesture | Where | Result |
 |---|---|---|
-| **Tap** | An hour column | Hour Detail overlay for that hour |
+| **Tap** | An hour column | Hour Detail panel, expanding out of that column |
+| **Tap** | A neighbour hour beside the Hour Detail panel | Re-points the panel at that hour without closing it |
 | **Tap** | The "Now" zone (left 208px) | Now Detail overlay |
-| **Tap** | Anywhere, with an overlay open | Close it |
+| **Tap** | The pressure cell in Now Detail | Pressure Detail overlay |
+| **Tap** | The panel, or anywhere else, with an overlay open | Close it |
 | **Swipe right** (finger left → right) | Today | Opens the System drawer, sliding in from the left |
 | **Swipe left** (finger right → left) | System | Puts the drawer away, sliding out to the left |
-| **Swipe down** | Any screen | Quick Settings sheet |
-| **Swipe up** | Quick Settings | Close it |
-| **Swipe up / down** | Hour or Now detail | Close it |
+| **Swipe down** | Any screen | Quick Settings sheet drops from the top edge |
+| **Swipe up** | Quick Settings | Close it (so does a tap on the dimmed content below) |
+| **Swipe up / down** | Hour, Now or Pressure detail | Close it |
 | **Long press (700ms)** | Anywhere | Force a forecast refresh |
 
 Anything not in the table is dropped: a swipe left on Today does nothing, a
