@@ -36,6 +36,12 @@ int  s_sunrise_sod = 6 * 3600 + 30 * 60;
 int  s_sunset_sod  = 19 * 3600 + 30 * 60;
 
 long s_utc_offset = 0;
+// SNTP answers within seconds of Wi-Fi; the UTC offset only arrives with the
+// first forecast. In between, "local time" would be UTC - which for anyone
+// west of Greenwich in the evening reads as the small hours and drops the
+// panel to its deep-night floor moments after it connects. Until the offset
+// is known the time of day is reported as unknown, and unknown means DAY.
+bool s_have_utc_offset = false;
 
 // Perceived brightness is roughly the square root of luminous output, so a
 // linear PWM ramp spends most of its travel in a range the eye reads as "on".
@@ -196,13 +202,17 @@ void backlight_set_sun(int sunrise_sod, int sunset_sod) {
     s_sunset_sod  = sunset_sod;
 }
 
-void backlight_set_utc_offset(long seconds) { s_utc_offset = seconds; }
+void backlight_set_utc_offset(long seconds) {
+    s_utc_offset = seconds;
+    s_have_utc_offset = true;
+}
 long backlight_utc_offset() { return s_utc_offset; }
 
 int backlight_local_seconds_of_day() {
     const time_t now = time(nullptr);
-    // Anything before 2021 means SNTP has not answered yet.
-    if (now < 1600000000) return -1;
+    // Anything before 2021 means SNTP has not answered yet; and UTC alone is
+    // not a time of day anywhere the panel is likely to be mounted.
+    if (now < 1600000000 || !s_have_utc_offset) return -1;
     long long local = static_cast<long long>(now) + s_utc_offset;
     int sod = static_cast<int>(local % 86400);
     if (sod < 0) sod += 86400;

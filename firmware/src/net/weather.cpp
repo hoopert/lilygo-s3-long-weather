@@ -132,6 +132,12 @@ bool fetch_forecast() {
     HTTPClient http;
     http.setTimeout(WX_HTTP_TIMEOUT_MS);
     http.setConnectTimeout(WX_HTTP_TIMEOUT_MS);
+    // HTTP/1.0, so the server cannot answer with Transfer-Encoding: chunked.
+    // The JSON parser below reads http.getStream() directly, and a chunked
+    // body arrives with hex chunk-size lines interleaved with the JSON - the
+    // first byte the parser sees is a chunk size, not '{', and it fails with
+    // InvalidInput. Open-Meteo chunks its HTTPS responses by default.
+    http.useHTTP10(true);
     if (!http.begin(client, build_url())) {
         set_status(WxStatus::ErrorNetwork);
         return false;
@@ -145,11 +151,13 @@ bool fetch_forecast() {
         return false;
     }
 
+    const int content_length = http.getSize();   // -1 when the server did not say
     JsonDocument doc(&s_allocator);
     const DeserializationError err = deserializeJson(doc, http.getStream());
     http.end();
     if (err) {
-        Serial.printf("[wx] parse failed: %s\n", err.c_str());
+        Serial.printf("[wx] parse failed: %s (HTTP %d, content-length %d)\n",
+                      err.c_str(), code, content_length);
         set_status(WxStatus::ErrorParse);
         return false;
     }

@@ -90,6 +90,7 @@ All of it is tunable at the top of
 | [`docs/HARDWARE.md`](docs/HARDWARE.md) | Pinout, the two touch-controller revisions, mounting and power notes |
 | [`docs/UX.md`](docs/UX.md) | The interaction contract — gestures, states, motion |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it fits together, and how to add a screen |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | What is known and deliberately not done yet |
 | `firmware/` | PlatformIO project |
 | `tools/build_fonts.sh` | Regenerates the eight LVGL font cuts |
 | `tools/flash.sh`, `tools/flash.ps1` | Command-line flashing |

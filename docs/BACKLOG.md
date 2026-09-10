@@ -1,0 +1,14 @@
+# Backlog
+
+Things noticed and deliberately not done yet, so they have a home other than a
+chat transcript. Newest at the bottom. Remove an item when it ships.
+
+| # | Item | Notes |
+|---|---|---|
+| 1 | **Apply the Claude Design pass** | `design/tokens.json` is not in the repository yet. When it lands, apply it to `theme.h`, `theme.cpp` and the `k*` layout constants in `screen_today.cpp` per `docs/DESIGN_PROMPT.md`; type-size changes need a regenerated font cut (`tools/build_fonts.sh`). Blocked on the panel being legible, which it now is. |
+| 2 | `WebServer: request handler not found` on the console during setup | Phones probe `/generate_204`, `/hotspot-detect.html` and similar to detect a captive portal; WiFiManager redirects them but the Arduino server logs each miss at error level. Harmless. Silence by lowering `CORE_DEBUG_LEVEL` for that tag or by registering a catch-all handler. |
+| 3 | Brightness ladder skips a step when leaving Auto | Observed: Auto (255) → 110 on the first press, rather than 180. `backlight_cycle_step()` picks "next dimmer than current" and the comparison is probably strict against the Auto target. Make the first press out of Auto land on the first ladder rung below the current level, inclusive. |
+| 4 | Frame path is serial: rotate, then wait for the wire | `panel_push_frame()` rotates band N, transmits it, then rotates band N+1. Two chunk buffers and `spi_device_queue_trans` would overlap the two and roughly halve the ~25ms per frame. Worth doing only if an animation looks choppy. |
+| 5 | Panel register read-back is unverified | Every register reads `0xFF` on this glass with either dummy count. Either the AXS15231B's QSPI read format differs from the guess in `read_reg()` or the panel revision does not support reads. Advisory line stays; find the datasheet's read timing if it ever matters. |
+| 6 | First release tag | `tools/flash.sh` downloads from the latest GitHub Release, and no release exists yet. `git tag v1.0.0 && git push origin v1.0.0` once the forecast renders. First exercise of `softprops/action-gh-release`. |
+| 7 | Remove the boot probe once a second panel revision has been seen | `PANEL_BOOT_PROBE` and `panel_init_tables.h`'s bisection tables exist to answer "which init does this glass want". Keep until a second board has been through them, then cut. |
