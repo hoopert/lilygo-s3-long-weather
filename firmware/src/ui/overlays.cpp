@@ -167,7 +167,7 @@ lv_obj_t *pill(lv_obj_t *parent, int x, int y, int w, int h, const char *text,
     lv_obj_set_style_radius(b, h / 2, 0);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(b, lv_color_hex(bg), 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(COL_SURFACE_HI), LV_STATE_PRESSED);
+    theme_press_feedback(b);
     if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, nullptr);
 
     lv_obj_t *l = theme_label(b, font, fg, text);

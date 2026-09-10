@@ -40,7 +40,13 @@
 #define ICON_ERROR               "\xEE\x80\x80"   // U+E000 error
 #define ICON_DONE                "\xEE\xA1\xB6"   // U+E876 done
 #define ICON_NAV                 "\xEE\x95\x9D"   // U+E55D navigation
-#define ICON_BATTERY             "\xEE\x86\xA4"   // U+E1A4 battery_full
+#define ICON_BATTERY             "\xEE\x86\xA4"
+// Pressure module and body effects (design/SPEC.md §3, §3B).
+#define ICON_SPEED               "\xEE\xA7\xA4"   // U+E9E4 speed - barometer
+#define ICON_RHEUMATOLOGY        "\xEE\x84\xA8"   // U+E128 joint pain
+#define ICON_NEUROLOGY           "\xEE\x84\x8E"   // U+E10E migraine
+#define ICON_HEARING             "\xEE\x80\xA3"   // U+E023 sinus & ears
+#define ICON_CARDIOLOGY          "\xEE\x82\x9C"   // U+E09C heart strain   // U+E1A4 battery_full
 
 // Glyph for a condition, given the WMO code and whether the sun is up.
 const char *icon_for(WxIcon icon);

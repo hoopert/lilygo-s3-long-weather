@@ -121,6 +121,7 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_set_style_radius(s_forget_btn, 11, 0);
     lv_obj_set_style_bg_opa(s_forget_btn, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(s_forget_btn, lv_color_hex(COL_SURFACE), 0);
+    theme_press_feedback(s_forget_btn);
     lv_obj_add_event_cb(s_forget_btn, forget_cb, LV_EVENT_CLICKED, nullptr);
 
     s_forget_lbl = theme_label(s_forget_btn, &font_micro, COL_ALUMINUM_DIM,

@@ -288,7 +288,7 @@ lv_obj_t *create(lv_obj_t *parent) {
         lv_obj_set_width(w.icon, LAYOUT_HOUR_COL_W);
         lv_obj_set_pos(w.icon, x, kIconY);
 
-        w.temp = theme_label(parent, &font_hour, COL_ALUMINUM, "--");
+        w.temp = theme_label(parent, &font_title, COL_ALUMINUM, "--");
         lv_obj_set_style_text_align(w.temp, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_width(w.temp, LAYOUT_HOUR_COL_W);
         lv_obj_set_pos(w.temp, x, kTempY);
@@ -434,6 +434,11 @@ void update(lv_obj_t *root) {
         fmt_temp_plain(h.temp, buf, sizeof(buf));
         lv_label_set_text(w.temp, buf);
         lv_obj_set_style_text_color(w.temp, tc, 0);
+        // 30px Jost Medium measures ~52px at "100", wider than the column;
+        // the 24px cut measures ~41px. Swap per label at three characters
+        // (>= 100 F or <= -10) - both cuts centre in the same column.
+        lv_obj_set_style_text_font(
+            w.temp, strlen(buf) >= 3 ? &font_hour_narrow : &font_title, 0);
 
         // Below 10% the number is noise. An empty cell reads as "no rain"
         // faster than a column of zeroes does, and it keeps the strip quiet
