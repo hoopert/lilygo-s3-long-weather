@@ -1,18 +1,32 @@
 // AXS15231B QSPI panel driver for the T-Display-S3-Long.
 //
 // Adapted from the vendor driver in Xinyuan-LilyGO/T-Display-S3-Long
-// (examples/factory/AXS15231B.cpp, MIT). The vendor ships two transfer paths:
-// an interrupt-driven DMA queue and a simpler polling loop. This uses the
-// polling path. It is roughly 14ms for a full 180x640 frame at 32MHz over four
-// data lines, which is comfortably inside our 33ms refresh budget, and it
-// removes an entire class of DMA-completion race that the queued path has to
-// hand-manage across flush calls.
+// (examples/factory/AXS15231B.cpp, MIT). The vendor source carries two pixel
+// paths behind #ifdef LCD_SPI_DMA; the binary they ship is built with the
+// DMA one, and that is the path reproduced here - polled rather than queued
+// (roughly 14ms for a full 180x640 frame at 32MHz over four data lines,
+// comfortably inside the 33ms refresh budget, with none of the DMA-completion
+// bookkeeping the queued version hand-manages across flush calls), but the
+// same bytes on the same wires with CS held the same way.
 #pragma once
 
 #include <stdint.h>
 
-// Brings up the QSPI bus and runs the AXS15231B init sequence.
+// Brings up the QSPI bus, runs the AXS15231B init sequence, then prints
+// panel_report(). The bus parameters, init table and pixel write path are
+// the shipped factory binary's, exactly - see kResting in panel.cpp.
 void panel_init();
+
+// Diagnostic. Cycles through the candidate bus/init/write configurations,
+// filling the glass with a two-colour split for each and printing a step
+// number, so one flash answers "which of these does this glass want".
+// Enabled by PANEL_BOOT_PROBE in config.h; adds ~30s to boot.
+void panel_boot_probe();
+
+// Reads the controller's identity and power-mode registers back over QSPI and
+// prints them. The "power mode" line is the fastest way to tell a panel that
+// never heard a command from one that is on and showing whatever it was sent.
+void panel_report();
 
 // Blits a rectangle of RGB565 pixels. Blocks until the transfer completes.
 void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,

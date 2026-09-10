@@ -146,10 +146,12 @@
     serial output, live, in the browser. Nothing to install.
   </p>
   <p class="note" style="text-align:left">
-    It is the fastest way to answer "is it booting?". A healthy start prints the
-    touch controller it found, then free heap and PSRAM, then the Wi-Fi state.
-    Any line beginning <code>[fatal]</code> or <code>[warn]</code> is the panel
-    telling you exactly what went wrong.
+    It is the fastest way to answer "is it booting?". A healthy start prints a
+    <code>[panel] power mode</code> line — the display controller reporting its
+    own state back, so <em>display ON, sleep out</em> means it heard every
+    command — then the touch controller it found, free heap and PSRAM, and the
+    Wi-Fi state. Any line beginning <code>[fatal]</code> or <code>[warn]</code>
+    is the panel telling you exactly what went wrong.
   </p>
 
   <h2>If the install button does nothing</h2>

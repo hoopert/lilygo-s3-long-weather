@@ -44,7 +44,14 @@
 //                        orange end becomes the RIGHT edge of the landscape UI.
 // ---------------------------------------------------------------------------
 #define PANEL_BOOT_SELF_TEST    1
-#define PANEL_BOOT_SELF_TEST_MS 700
+#define PANEL_BOOT_SELF_TEST_MS 3000
+
+// Boot probe: before the self-test, try each candidate panel configuration
+// in turn (bus mode, clock, init table, pixel write path) for
+// PANEL_BOOT_PROBE_HOLD_MS each, printing a step number to the console. Set
+// to 1 only while finding out what a panel wants; it adds ~30s to every boot.
+#define PANEL_BOOT_PROBE         1
+#define PANEL_BOOT_PROBE_HOLD_MS 2500
 
 // ---------------------------------------------------------------------------
 // Setup portal

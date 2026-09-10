@@ -190,12 +190,55 @@ git push origin v1.0.0
 
 ## Troubleshooting
 
+### Seeing what the panel is doing
+
+Open the installer page with the board connected and press **Install firmware**
+again. Once the board is already running this firmware the dialog offers
+**Logs & Console** - the serial output, live in the browser. The first lines
+after reset are the ones that matter:
+
+```
+[probe] 8 steps, 2500ms each. Watch the glass and note the FIRST step that shows turquoise over orange.
+[probe] step 1/8: factory-exact: short init, QSPI held-CS writes, mode 0, 32MHz
+[probe]   RDDPM=0x9C  (holding)
+...
+[panel] power mode 0x9C: booster on, sleep out, normal mode, display ON
+[panel] self-test: turquoise/orange split, backlight full, holding 3000ms
+[touch] CST3530 at 0x58
+[loop] up=35s bl=255/255 flushes=80 heap=136K lvmem=40%
+```
+
+The `[panel] power mode` line is the controller reporting its own state back
+over the bus. It is advisory: LilyGO's driver never reads from the panel, so
+the read format is unverified on this glass and a row of `00`/`FF` does not by
+itself mean the panel is dead.
+
+### Is it the hardware?
+
+LilyGO publishes its own factory demo for this board as a single flashable
+image, and it is the fastest way to separate "this firmware" from "this
+board". It is the CST3530 build (the touch revision the panel reports at
+boot):
+
+```bash
+curl -LO https://github.com/Xinyuan-LilyGO/T-Display-S3-Long/raw/master/firmware/factory-cst3530.bin
+./tools/flash.sh factory-cst3530.bin
+```
+
+or, with no terminal, open <https://espressif.github.io/esptool-js/> in
+Chrome, **Connect**, add the file at address `0x0`, **Program**, then press RST.
+
+If the LilyGO demo shows its logo and clock, the glass, the backlight and the
+QSPI wiring are fine and the fault is in this firmware - reflash it and send
+the console output. If the LilyGO demo is black too, the board is faulty;
+nothing in software will fix it.
+
 | Symptom | Cause and fix |
 |---|---|
 | Board never appears as a serial port | Charge-only USB cable. Try another one first; this is by far the most common cause. |
 | Install button greyed out or missing | Browser without Web Serial (Safari, Firefox). Use Chrome, Edge, or Opera. |
 | Flash fails partway | Force download mode: hold BOOT, tap RST, release BOOT, retry. |
-| Screen stays black | Watch the first second after power-on and read the console. The panel is driven **directly, with no LVGL** for ~700ms at boot: top half turquoise, bottom half orange, backlight forced full. **If you see that splash**, the driver, SPI bus and backlight all work and the fault is LVGL-side — check for `[flush]` lines on the console; if they never appear LVGL is not flushing. **If the splash is black too**, the fault is the panel driver or the backlight — shine a phone light at the glass at a steep angle; faint shapes mean pixels are there and the backlight is dead. Every 5s the console prints `[loop] up=… bl=… flushes=…`; if that line never appears the main loop is hung. |
+| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). With `PANEL_BOOT_PROBE` on (the default while the panel is being brought up), boot walks eight panel configurations, holding a turquoise-over-orange fill for 2.5s each and printing `[probe] step N/8`. **Note the first step that shows colour** and send it with the `[probe]` lines. If none of the eight shows anything, flash LilyGO's own image (below): if that lights, the fault is still this firmware's and the console output is what will find it; if that is black too, the board is faulty. |
 | Colors look lurid — reds and blues swapped | `LV_COLOR_16_SWAP` in `firmware/include/lv_conf.h`. It should be `1`. |
 | Display is upside down | Change `UI_ROTATION` in `firmware/include/config.h` from `LV_DISP_ROT_90` to `LV_DISP_ROT_270`, and set both `TOUCH_INVERT_X` and `TOUCH_INVERT_Y` to `true`. |
 | Taps land in the wrong place | Swipe to the System screen and watch the **TOUCH / RAW XY** readout while pressing each corner. Then flip `TOUCH_INVERT_X` / `TOUCH_INVERT_Y` to match. |
