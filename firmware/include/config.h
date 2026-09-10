@@ -14,11 +14,11 @@
 // The panel is physically 180x640 (tall and narrow). The UI is designed for
 // 640x180 (wide and short), so LVGL rotates the framebuffer by 90 degrees.
 //
-// If your panel comes up upside-down once mounted, change ROT_90 to ROT_270
-// here and flip TOUCH_INVERT_X and TOUCH_INVERT_Y below to match. That is the
-// entire fix - nothing else needs to change.
+// If the UI comes up upside-down once mounted, swap ROT_270 for ROT_90 here.
+// That is the entire fix: LVGL applies the same rotation to touch input, so
+// TOUCH_INVERT_X/Y below stay as they are (lv_indev.c, indev_pointer_proc).
 // ---------------------------------------------------------------------------
-#define UI_ROTATION      LV_DISP_ROT_90
+#define UI_ROTATION      LV_DISP_ROT_270
 #define UI_WIDTH         PANEL_HEIGHT   // 640 - the app-space width
 #define UI_HEIGHT        PANEL_WIDTH    // 180 - the app-space height
 
@@ -39,17 +39,19 @@
 //
 //   - Anything at all?   Then the driver, the SPI bus and the backlight work,
 //                        and any remaining blackness is LVGL-side.
-//   - Which end is orange?  That is the panel's row 640, so it tells you which
-//                        way the UI needs to rotate: set UI_ROTATION so the
-//                        orange end becomes the RIGHT edge of the landscape UI.
+//   - Which end is orange?  That is the panel's row 640. LV_DISP_ROT_270 puts
+//                        the UI's LEFT edge at the turquoise end, LV_DISP_ROT_90
+//                        at the orange end. Touch needs no change either way:
+//                        LVGL rotates the raw coordinates itself.
 // ---------------------------------------------------------------------------
 #define PANEL_BOOT_SELF_TEST    1
 #define PANEL_BOOT_SELF_TEST_MS 3000
 
-// Boot probe: before the self-test, try each candidate panel configuration
-// in turn (bus mode, clock, init table, pixel write path) for
-// PANEL_BOOT_PROBE_HOLD_MS each, printing a step number to the console. Set
-// to 1 only while finding out what a panel wants; it adds ~30s to every boot.
+// Boot probe: before the self-test, try each candidate panel init in turn
+// for PANEL_BOOT_PROBE_HOLD_MS each, printing a step number to the console.
+// Set to 1 only while finding out what a panel wants; it lengthens every boot.
+// Round one (8 steps) found the fault - the vendor's short init table; round
+// two (5 steps, current) bisects that table. Set to 0 once it has answered.
 #define PANEL_BOOT_PROBE         1
 #define PANEL_BOOT_PROBE_HOLD_MS 2500
 

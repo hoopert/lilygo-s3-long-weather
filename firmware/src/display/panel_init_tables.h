@@ -14,8 +14,8 @@ struct LcdCmd {
 // What the shipped factory-cst3530.bin sends, byte for byte, including the
 // vendor's quirk of 32 zero parameter bytes after SLPIN (their table encodes
 // the entry's delay flags in the same byte as the length and this one reads
-// as "length 32"). Reproduced exactly because it is the one sequence proven
-// on this board.
+// as "length 32"). Reproduced exactly - and, on this glass, it leaves the
+// panel black. The probe variants below take it apart one change at a time.
 const LcdCmd kInitFactory[] = {
     {0x28, {0}, 0, 20},     // DISPOFF
     {0x10, {0}, 32, 0},     // SLPIN + 32 zero bytes
@@ -23,8 +23,32 @@ const LcdCmd kInitFactory[] = {
     {0x29, {0}, 0, 0},      // DISPON
 };
 
+// Factory table with the DCS-mandated 120ms between SLPIN and SLPOUT.
+const LcdCmd kInitFactoryDelayed[] = {
+    {0x28, {0}, 0, 20}, {0x10, {0}, 32, 120}, {0x11, {0}, 0, 200}, {0x29, {0}, 0, 0},
+};
+// Factory table without the 32 stray zero bytes after SLPIN.
+const LcdCmd kInitFactoryNoPad[] = {
+    {0x28, {0}, 0, 20}, {0x10, {0}, 0, 0}, {0x11, {0}, 0, 200}, {0x29, {0}, 0, 0},
+};
+// Factory table as-is, plus COLMOD 16bpp before DISPON.
+const LcdCmd kInitFactoryColmod[] = {
+    {0x28, {0}, 0, 20}, {0x10, {0}, 32, 0}, {0x11, {0}, 0, 200}, {0x3A, {0x05}, 1, 0}, {0x29, {0}, 0, 0},
+};
+// Factory table as-is, plus NORON before DISPON.
+const LcdCmd kInitFactoryNoron[] = {
+    {0x28, {0}, 0, 20}, {0x10, {0}, 32, 0}, {0x11, {0}, 0, 200}, {0x13, {0}, 0, 0}, {0x29, {0}, 0, 0},
+};
+// The four DCS commands alone, with proper delays and no padding: what is left
+// of kInitDcs when every "extra" is removed.
+const LcdCmd kInitMinimal[] = {
+    {0x28, {0}, 0, 20}, {0x10, {0}, 0, 120}, {0x11, {0}, 0, 200}, {0x29, {0}, 0, 20},
+};
+
 // The factory sequence plus everything Arduino_GFX's Arduino_AXS15231 sets
 // explicitly: normal mode, inversion off, 16bpp, brightness-control block.
+// This is the resting configuration: it lit the glass on the first probe
+// (step 2 of 8) where the factory table did not.
 const LcdCmd kInitDcs[] = {
     {0x28, {0},    0,  20},   // DISPOFF
     {0x10, {0},    0, 120},   // SLPIN

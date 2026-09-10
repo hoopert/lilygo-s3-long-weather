@@ -40,9 +40,12 @@ struct PanelConfig {
 
 #define TABLE(t) t, (sizeof(t) / sizeof(t[0]))
 
-// The configuration the panel runs on. The factory-exact one: proven on this
-// board by LilyGO's own binary, which was the only thing that ever lit it.
-const PanelConfig kResting = {"factory-exact", 0, LCD_SPI_FREQUENCY, TABLE(kInitFactory), WriteMode::kQuadHeld};
+// The configuration the panel runs on. Chosen by the boot probe, not by
+// reading vendor code: the factory-exact configuration (short init table,
+// held-CS QSPI writes) left the glass black in every variant that used that
+// init table, and lit it in every variant that did not. The write path was
+// never the problem.
+const PanelConfig kResting = {"DCS init, held-CS QSPI writes", 0, LCD_SPI_FREQUENCY, TABLE(kInitDcs), WriteMode::kQuadHeld};
 PanelConfig s_cfg = kResting;
 
 inline void cs_low()  { digitalWrite(PIN_LCD_CS, LOW); }
@@ -244,67 +247,37 @@ void panel_init() {
 }
 
 void panel_report() {
-    // Ask the controller what state it thinks it is in. The AXS15231B's read
-    // opcode wants dummy clocks between address and data; the datasheet is
-    // thin on how many, so both plausible counts are shown. Whichever column
-    // decodes sensibly is the right one; if both are all 00 or all FF for
-    // every register, the panel is not answering reads at all (writes may
-    // still work - the factory driver never reads).
-    struct Reg { uint8_t reg; uint8_t len; const char *name; };
-    const Reg regs[] = {
-        {0x04, 4, "RDDID    "},   // manufacturer / version / driver id
-        {0x0A, 1, "RDDPM    "},   // power mode: bit7 booster, bit4 sleep-out, bit3 normal, bit2 display-on
-        {0x0C, 1, "RDDCOLMOD"},   // pixel format: 0x05 = 16bpp
-        {0x0D, 1, "RDDIM    "},   // image mode: bit5 inversion
-    };
-    bool any_signal = false;
-    for (const Reg &r : regs) {
-        uint8_t d8[4] = {0}, d0[4] = {0};
-        read_reg(r.reg, 8, d8, r.len);
-        read_reg(r.reg, 0, d0, r.len);
-        Serial.printf("[panel] %s (%02X)  dummy8:", r.name, r.reg);
-        for (uint8_t i = 0; i < r.len; i++) Serial.printf(" %02X", d8[i]);
-        Serial.print("  dummy0:");
-        for (uint8_t i = 0; i < r.len; i++) Serial.printf(" %02X", d0[i]);
-        Serial.println();
-        for (uint8_t i = 0; i < r.len; i++) {
-            if ((d8[i] != 0x00 && d8[i] != 0xFF) || (d0[i] != 0x00 && d0[i] != 0xFF)) any_signal = true;
-        }
-    }
-
-    uint8_t pm = 0;
+    // Ask the controller what it thinks its state is. On this glass every
+    // register reads 0xFF with either dummy count, so the read opcode format
+    // is wrong or unsupported here; the line is kept because it costs nothing
+    // and a different panel revision may answer.
+    uint8_t id[4] = {0}, pm = 0, colmod = 0;
+    read_reg(0x04, 8, id, 4);
     read_reg(0x0A, 8, &pm, 1);
-    if (!any_signal) {
-        Serial.println("[panel] no reply to reads: every register is 00/FF. Not conclusive on "
-                       "its own - the factory driver never reads, so the read opcode "
-                       "format is unverified on this glass.");
-    } else {
-        Serial.printf("[panel] power mode 0x%02X: booster %s, sleep %s, %s mode, display %s\n",
-                      pm,
-                      (pm & 0x80) ? "on" : "OFF",
-                      (pm & 0x10) ? "out" : "IN",
-                      (pm & 0x08) ? "normal" : "partial",
-                      (pm & 0x04) ? "ON" : "OFF");
-    }
+    read_reg(0x0C, 8, &colmod, 1);
+    Serial.printf("[panel] readback RDDID=%02X%02X%02X%02X RDDPM=%02X COLMOD=%02X "
+                  "(advisory: reads are unverified on this glass)\n",
+                  id[0], id[1], id[2], id[3], pm, colmod);
 }
 
 void panel_boot_probe() {
     // One variable changes per step relative to step 1, which is the shipped
     // factory binary's configuration. Each step: hardware reset, init, fill
     // the glass turquoise over orange, hold, and report the power-mode read.
+    // Round two. Round one showed the factory init table is the fault and the
+    // write path is not, so every step here uses the working write path and
+    // changes one thing about the factory table. Whichever lights names the
+    // exact culprit.
     const PanelConfig steps[] = {
-        {"factory-exact: short init, QSPI held-CS writes, mode 0, 32MHz", 0, LCD_SPI_FREQUENCY, TABLE(kInitFactory), WriteMode::kQuadHeld},
-        {"DCS-complete init (NORON/INVOFF/COLMOD), otherwise as step 1",   0, LCD_SPI_FREQUENCY, TABLE(kInitDcs),     WriteMode::kQuadHeld},
-        {"CS toggled per chunk + 0x3C continue (previous driver)",         0, LCD_SPI_FREQUENCY, TABLE(kInitFactory), WriteMode::kQuadContinue},
-        {"single data line writes (opcode 0x02)",                          0, LCD_SPI_FREQUENCY, TABLE(kInitFactory), WriteMode::kSingle},
-        {"10MHz clock",                                                    0, 10000000,          TABLE(kInitFactory), WriteMode::kQuadHeld},
-        {"SPI mode 3",                                                     3, LCD_SPI_FREQUENCY, TABLE(kInitFactory), WriteMode::kQuadHeld},
-        {"vendor long register table (init_new)",                          0, LCD_SPI_FREQUENCY, TABLE(kInitLong),    WriteMode::kQuadHeld},
-        {"vendor long register table (init_new_3, from test_display bins)", 0, LCD_SPI_FREQUENCY, TABLE(kInitLong3),   WriteMode::kQuadHeld},
+        {"factory table + 120ms after SLPIN (keeps the 32 zero bytes)", 0, LCD_SPI_FREQUENCY, TABLE(kInitFactoryDelayed), WriteMode::kQuadHeld},
+        {"factory table without the 32 zero bytes (no delay)",          0, LCD_SPI_FREQUENCY, TABLE(kInitFactoryNoPad),   WriteMode::kQuadHeld},
+        {"factory table + COLMOD 16bpp",                                0, LCD_SPI_FREQUENCY, TABLE(kInitFactoryColmod),  WriteMode::kQuadHeld},
+        {"factory table + NORON",                                       0, LCD_SPI_FREQUENCY, TABLE(kInitFactoryNoron),   WriteMode::kQuadHeld},
+        {"minimal DCS: 28/10/11/29 with delays, no padding, no extras",  0, LCD_SPI_FREQUENCY, TABLE(kInitMinimal),        WriteMode::kQuadHeld},
     };
     const size_t n = sizeof(steps) / sizeof(steps[0]);
 
-    Serial.printf("[probe] %u steps, %dms each. Watch the glass and note the FIRST step "
+    Serial.printf("[probe] %u steps, %dms each. Watch the glass and note EVERY step "
                   "that shows turquoise over orange.\n", (unsigned)n, PANEL_BOOT_PROBE_HOLD_MS);
     for (size_t i = 0; i < n; i++) {
         Serial.printf("[probe] step %u/%u: %s\n", (unsigned)(i + 1), (unsigned)n, steps[i].name);
