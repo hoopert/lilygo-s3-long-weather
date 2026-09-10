@@ -63,7 +63,18 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     // panel_push_frame(), inverted.
     data->state = p.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
     static bool s_was_pressed = false;
-    if (p.pressed && !s_was_pressed) ui_note_press_start();
+    static int  s_press_x0 = 0;   // app-space x where this press began
+    static int  s_press_x1 = 0;   // and where it was last seen
+    const bool rising = p.pressed && !s_was_pressed;
+    if (rising) ui_note_press_start();
+    if (!p.pressed && s_was_pressed) {
+        // The System gate's trigger: a touch that began at one edge of the
+        // glass and let go at the other. Judged here, on the raw contact,
+        // because LVGL's gesture only knows the direction, not the reach.
+        const bool l2r = s_press_x0 < UI_EDGE_SWIPE_PX && s_press_x1 >= UI_WIDTH - UI_EDGE_SWIPE_PX;
+        const bool r2l = s_press_x1 < UI_EDGE_SWIPE_PX && s_press_x0 >= UI_WIDTH - UI_EDGE_SWIPE_PX;
+        if (l2r || r2l) overlays_note_edge_swipe();
+    }
     s_was_pressed = p.pressed;
     if (p.pressed) {
         if (UI_ROTATION == LV_DISP_ROT_270) {
@@ -73,6 +84,8 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
             data->point.x = (PANEL_HEIGHT - 1) - p.y;
             data->point.y = p.x;
         }
+        if (rising) s_press_x0 = data->point.x;
+        s_press_x1 = data->point.x;
         // Presence for the auto-dimmer is taken here rather than from a widget
         // event, because this is the only place that sees every contact -
         // including taps on dead space and drags that never become clicks.

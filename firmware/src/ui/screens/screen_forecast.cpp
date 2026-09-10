@@ -9,10 +9,13 @@
 #include "net/weather.h"
 #include "ui/format.h"
 #include "ui/icons.h"
+#include "ui/overlays.h"
+#include "ui/screen_manager.h"
 #include "ui/theme.h"
 
 // Ten days across the safe width, each a column of weekday, glyph, high, low
-// and the chance of rain. It reads like the hourly strip, one level up.
+// and the chance of rain. It reads like the hourly strip, one level up, and
+// a tap on a day opens Day Detail the way a tap on an hour opens Hour Detail.
 
 namespace {
 
@@ -53,6 +56,12 @@ void long_pressed(lv_event_t *e) {
     backlight_note_activity();
 }
 
+void day_clicked(lv_event_t *e) {
+    if (ui_gesture_recent()) return;   // the tail of a swipe
+    backlight_note_activity();
+    overlays_show_day(int(intptr_t(lv_event_get_user_data(e))));
+}
+
 lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_add_event_cb(parent, long_pressed, LV_EVENT_LONG_PRESSED, nullptr);
 
@@ -84,6 +93,17 @@ lv_obj_t *create(lv_obj_t *parent) {
         lv_obj_set_pos(w.rain_icon, x, kRainY + 2);
         w.rain = theme_label(parent, &font_micro, COL_TURQUOISE, "");
         lv_obj_set_pos(w.rain, x, kRainY);
+
+        // The hit target, on top of the column. EVENT_BUBBLE so the long
+        // press still reaches the screen's refresh handler.
+        lv_obj_t *cell = lv_obj_create(parent);
+        lv_obj_remove_style_all(cell);
+        lv_obj_set_pos(cell, x, 0);
+        lv_obj_set_size(cell, LAYOUT_DAY_COL_W, UI_HEIGHT - 12);
+        lv_obj_add_flag(cell, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_EVENT_BUBBLE);
+        lv_obj_clear_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_event_cb(cell, day_clicked, LV_EVENT_CLICKED,
+                            reinterpret_cast<void *>(intptr_t(i)));
     }
     return parent;
 }

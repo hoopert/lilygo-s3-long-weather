@@ -155,6 +155,13 @@
 #define BTN_DOUBLE_GAP_MS    350
 
 #define GESTURE_MIN_DISTANCE 40    // px of travel before a swipe counts
+// The System drawer opens behind a gate: a swipe from one edge of the glass
+// to the other (a touch beginning within UI_EDGE_SWIPE_PX of one side and
+// ending within it of the other) shows a settings button that wants three
+// taps, each within UI_GATE_WINDOW_MS of the last, or it fades.
+#define UI_EDGE_SWIPE_PX     30
+#define UI_GATE_TAPS         3
+#define UI_GATE_WINDOW_MS    1000
 
 #define UI_SCREEN_ANIM_MS    280
 #define UI_OVERLAY_ANIM_MS   220

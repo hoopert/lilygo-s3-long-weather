@@ -46,10 +46,11 @@ Full instructions, including the command-line and PlatformIO paths:
 | Gesture | What happens |
 |---|---|
 | **Tap an hour column** | That hour in a panel that opens out of the column — feels-like, humidity, rain chance *and* amount, wind, gusts. Tap a neighbouring hour to move the panel; tap the panel to close it |
+| **Tap a day on the forecast** | That day in the same kind of panel — high and low, UV peak, sunrise; rain chance *and* amount, strongest wind, sunset. Neighbouring days move it |
 | **Tap the big temperature** | Now in full — a sun arc showing where you are in the day, high/low, UV, gusts, visibility, and the pressure outlook in words |
 | **Tap the pressure** | The last 24 hours of pressure, the trend, and what it means for joints, migraines, sinuses and heart |
 | **Swipe left** | The ten-day forecast (swipe right to come back) |
-| **Swipe right** | Open the System drawer (swipe left to put it away) |
+| **Swipe edge to edge, then tap ×3** | The System drawer: a full swipe across the glass shows a settings button; three quick taps on it open the drawer (swipe left to put it away). Deliberately hard to do by accident |
 | **Swipe down** | Quick settings: a big brightness bar you tap or drag, refresh, Wi-Fi |
 | **Swipe up** | Close whatever is open |
 | **Press and hold** | Fetch a new forecast now |

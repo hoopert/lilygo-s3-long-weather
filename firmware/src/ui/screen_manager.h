@@ -52,6 +52,16 @@ struct ScreenDef {
     // UI_SWIPE_* mask this screen accepts. Left/right also need a neighbour
     // at position∓1 to do anything; down opens Quick Settings.
     uint8_t  swipes;
+
+    // UI_SCREEN_* bits. A drawer is off the wayfinder: it has no dot in the
+    // page indicator, draws none of its own, and no swipe from a neighbour
+    // reaches it - only screens_show_position() does, which the System gate
+    // calls after its three taps. Screens that omit the field are ordinary.
+    uint8_t  flags;
+};
+
+enum : uint8_t {
+    UI_SCREEN_DRAWER = 1 << 0,
 };
 
 // Register before calling screens_begin(). Positions must be unique and must

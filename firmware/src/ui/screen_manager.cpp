@@ -42,10 +42,19 @@ int index_of_position(int position) {
     return -1;
 }
 
+bool is_drawer(int index) {
+    return index >= 0 && (s_defs[index].flags & UI_SCREEN_DRAWER);
+}
+
 // The page indicator: one dot per screen in strip order (by position), the
 // active one drawn as a short turquoise bar rather than a larger dot, so it
 // reads as a place on the strip rather than as a button you might press.
+// Drawers are not places on the strip: they get no dot and no indicator.
 void build_indicator(lv_obj_t *screen, int index) {
+    if (is_drawer(index)) {
+        s_indicators[index] = nullptr;
+        return;
+    }
     lv_obj_t *row = theme_decor(screen);
     lv_obj_set_size(row, LV_SIZE_CONTENT, 6);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
@@ -62,7 +71,7 @@ void build_indicator(lv_obj_t *screen, int index) {
     }
     for (int p = lo; p <= hi; p++) {
         const int i = index_of_position(p);
-        if (i < 0) continue;
+        if (i < 0 || is_drawer(i)) continue;
         lv_obj_t *dot = theme_decor(row);
         const bool active = (i == index);
         lv_obj_set_size(dot, active ? 12 : 4, 3);
@@ -127,9 +136,13 @@ void ui_handle_swipe(lv_dir_t dir) {
     const ScreenDef &cur = s_defs[s_current];
     if (!(cur.swipes & bit)) return;
 
+    // A swipe never lands in a drawer; see UI_SCREEN_DRAWER.
+    auto step = [&](int position) {
+        if (!is_drawer(index_of_position(position))) screens_show_position(position, true);
+    };
     switch (dir) {
-        case LV_DIR_RIGHT:  screens_show_position(cur.position - 1, true); break;
-        case LV_DIR_LEFT:   screens_show_position(cur.position + 1, true); break;
+        case LV_DIR_RIGHT:  step(cur.position - 1); break;
+        case LV_DIR_LEFT:   step(cur.position + 1); break;
         case LV_DIR_BOTTOM: overlays_show_quick_settings(); break;
         default: break;
     }

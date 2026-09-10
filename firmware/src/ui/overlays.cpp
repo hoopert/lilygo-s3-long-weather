@@ -17,7 +17,7 @@
 
 namespace {
 
-enum class OverlayKind { None, Hour, Now, Pressure, QuickSettings };
+enum class OverlayKind { None, Hour, Day, Now, Pressure, QuickSettings };
 
 lv_obj_t   *s_root = nullptr;
 OverlayKind s_kind = OverlayKind::None;
@@ -36,14 +36,23 @@ bool      s_bar_held = false;
 int       s_bar_press_x = 0;
 bool      s_bar_dragging = false;
 
-// Hour Detail: the centre panel and the neighbour columns either side of it,
-// rebuilt in place when a neighbour is tapped.
-lv_obj_t *s_hour_panel = nullptr;
-lv_obj_t *s_hour_content = nullptr;
-lv_obj_t *s_hour_neighbours = nullptr;
-int       s_hour_index = -1;
-int       s_hour_from_x = 0;     // the column the panel expands out of
-int       s_hour_pending = -1;   // a neighbour tap, applied on the next tick
+// Hour Detail and Day Detail: the centre panel and the neighbour columns
+// either side of it, rebuilt in place when a neighbour is tapped.
+lv_obj_t *s_panel = nullptr;
+lv_obj_t *s_panel_content = nullptr;
+lv_obj_t *s_panel_neighbours = nullptr;
+int       s_panel_index = -1;
+int       s_panel_from_x = 0;     // the column the panel expands out of
+int       s_panel_from_w = 0;     // and its width
+int       s_panel_pending = -1;   // a neighbour tap, applied on the next tick
+
+// The System gate, independent of the overlay above: it sits over whatever
+// is showing, overlay included, and never dims it.
+lv_obj_t *s_gate = nullptr;
+lv_obj_t *s_gate_dots[UI_GATE_TAPS] = {nullptr};
+lv_timer_t *s_gate_timer = nullptr;
+int       s_gate_taps = 0;
+bool      s_gate_requested = false;
 
 void dismiss_cb(lv_event_t *e) {
     LV_UNUSED(e);
@@ -246,6 +255,7 @@ void layer_gesture_cb(lv_event_t *e) {
 uint8_t overlays_swipes() {
     switch (s_kind) {
         case OverlayKind::Hour:
+        case OverlayKind::Day:
         case OverlayKind::Now:
         case OverlayKind::Pressure:      return UI_SWIPE_UP | UI_SWIPE_DOWN;
         case OverlayKind::QuickSettings: return UI_SWIPE_UP;
@@ -272,8 +282,8 @@ void overlays_dismiss() {
     s_qs_bar = s_qs_fill_clip = s_qs_fill = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
     s_qs_bl_status = s_qs_bars = s_qs_ssid = nullptr;
     s_bar_held = s_bar_dragging = false;
-    s_hour_panel = s_hour_content = s_hour_neighbours = nullptr;
-    s_hour_index = s_hour_pending = -1;
+    s_panel = s_panel_content = s_panel_neighbours = nullptr;
+    s_panel_index = s_panel_pending = -1;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,7 +316,7 @@ constexpr int kNeighbourTempY = 82;
 void neighbour_clicked(lv_event_t *e) {
     if (swallow_click()) return;
     backlight_note_activity();
-    s_hour_pending = int(intptr_t(lv_event_get_user_data(e)));
+    s_panel_pending = int(intptr_t(lv_event_get_user_data(e)));
 }
 
 // Micro label over a Title 30 value, with an optional 12px suffix hanging off
@@ -374,32 +384,37 @@ void neighbour_column(lv_obj_t *parent, int x, const WxData &d, int index) {
                         reinterpret_cast<void *>(intptr_t(index)));
 }
 
+// The hairlines between the neighbour columns, either side of the panel.
+void neighbour_hairlines() {
+    const int hair_x[4] = {kNeighbourLeftX[1] - 1, kNeighbourLeftX[2] - 1,
+                           kNeighbourRightX[1] - 1, kNeighbourRightX[2] - 1};
+    for (int x : hair_x) {
+        lv_obj_t *sep = theme_decor(s_panel_neighbours);
+        lv_obj_add_style(sep, &style_hairline, 0);
+        lv_obj_set_size(sep, 1, kNeighbourTempY + 30 - kNeighbourHourY);
+        lv_obj_set_pos(sep, x, kNeighbourHourY);
+        lv_obj_set_style_bg_opa(sep, LV_OPA_50, 0);
+    }
+}
+
 void hour_panel_render(const WxData &d, int index) {
     const WxHour &h = d.hours[index];
     const bool now = is_current_hour(h.time, d.utc_offset);
     const lv_color_t tc = theme_temp_color(h.temp, d.imperial);
     char buf[48], val[24], sfx[24];
 
-    lv_obj_clean(s_hour_content);
-    lv_obj_clean(s_hour_neighbours);
+    lv_obj_clean(s_panel_content);
+    lv_obj_clean(s_panel_neighbours);
 
     // --- neighbours ---------------------------------------------------------
     for (int k = 0; k < 3; k++) {
-        neighbour_column(s_hour_neighbours, kNeighbourLeftX[k], d, index - 3 + k);
-        neighbour_column(s_hour_neighbours, kNeighbourRightX[k], d, index + 1 + k);
+        neighbour_column(s_panel_neighbours, kNeighbourLeftX[k], d, index - 3 + k);
+        neighbour_column(s_panel_neighbours, kNeighbourRightX[k], d, index + 1 + k);
     }
-    const int hair_x[4] = {kNeighbourLeftX[1] - 1, kNeighbourLeftX[2] - 1,
-                           kNeighbourRightX[1] - 1, kNeighbourRightX[2] - 1};
-    for (int x : hair_x) {
-        lv_obj_t *sep = theme_decor(s_hour_neighbours);
-        lv_obj_add_style(sep, &style_hairline, 0);
-        lv_obj_set_size(sep, 1, kNeighbourTempY + 30 - kNeighbourHourY);
-        lv_obj_set_pos(sep, x, kNeighbourHourY);
-        lv_obj_set_style_bg_opa(sep, LV_OPA_50, 0);
-    }
+    neighbour_hairlines();
 
     // --- panel header -------------------------------------------------------
-    lv_obj_t *c = s_hour_content;
+    lv_obj_t *c = s_panel_content;
     snprintf(buf, sizeof(buf), "%s  ·  %s", now ? "THIS HOUR" : "FORECAST",
              wx_condition_text(h.code));
     lv_obj_t *eye = theme_label(c, &font_micro, COL_ALUMINUM_DIM, buf);
@@ -456,40 +471,28 @@ void panel_geom_cb(void *o, int32_t v) {
     // v runs 0..256: the panel's rectangle interpolates from the tapped
     // column's to its resting place, and the content fades up behind it.
     lv_obj_t *panel = static_cast<lv_obj_t *>(o);
-    const int from_x = s_hour_from_x;
-    const int from_w = LAYOUT_HOUR_COL_W;
+    const int from_x = s_panel_from_x;
+    const int from_w = s_panel_from_w;
     const int x = from_x + ((kPanelX - from_x) * v) / 256;
     const int w = from_w + ((kPanelW - from_w) * v) / 256;
     lv_obj_set_pos(panel, x, 0);
     lv_obj_set_width(panel, w);
-    if (s_hour_content) lv_obj_set_style_opa(s_hour_content, lv_opa_t(v > 255 ? 255 : v), 0);
+    if (s_panel_content) lv_obj_set_style_opa(s_panel_content, lv_opa_t(v > 255 ? 255 : v), 0);
 }
 
-}  // namespace
+// The centre panel and its neighbour layer, shared by Hour and Day Detail:
+// surface, rivet sides, turquoise top edge, a soft shadow so it sits above
+// the neighbours rather than between them. Clickable so a tap anywhere on it
+// dismisses; no printed hint - it is learned in one tap. Returns the panel;
+// the caller renders into s_panel_content and then calls panel_open_from().
+lv_obj_t *make_column_panel(lv_obj_t *root, OverlayKind kind, int index) {
+    s_kind = kind;
+    s_panel_index = index;
 
-void overlays_show_hour(int hour_index) {
-    WxData d;
-    weather_snapshot(d);
-    if (!d.valid || hour_index < 0 || hour_index >= d.hour_count) return;
+    s_panel_neighbours = theme_decor(root);
+    lv_obj_set_pos(s_panel_neighbours, 0, 0);
+    lv_obj_set_size(s_panel_neighbours, UI_WIDTH, UI_HEIGHT);
 
-    // Already open: re-point the panel without closing it.
-    if (s_kind == OverlayKind::Hour && s_hour_panel) {
-        s_hour_index = hour_index;
-        hour_panel_render(d, hour_index);
-        return;
-    }
-
-    lv_obj_t *root = make_backdrop();
-    s_kind = OverlayKind::Hour;
-    s_hour_index = hour_index;
-
-    s_hour_neighbours = theme_decor(root);
-    lv_obj_set_pos(s_hour_neighbours, 0, 0);
-    lv_obj_set_size(s_hour_neighbours, UI_WIDTH, UI_HEIGHT);
-
-    // The panel: surface, rivet sides, turquoise top edge, a soft shadow so it
-    // sits above the neighbours rather than between them. Clickable so a tap
-    // anywhere on it dismisses; no printed hint - it is learned in one tap.
     lv_obj_t *panel = lv_obj_create(root);
     lv_obj_remove_style_all(panel);
     lv_obj_set_size(panel, kPanelW, UI_HEIGHT);
@@ -505,7 +508,7 @@ void overlays_show_hour(int hour_index) {
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(panel, dismiss_cb, LV_EVENT_CLICKED, nullptr);
-    s_hour_panel = panel;
+    s_panel = panel;
 
     lv_obj_t *top = theme_decor(panel);
     lv_obj_set_size(top, LV_PCT(100), 2);
@@ -513,27 +516,338 @@ void overlays_show_hour(int hour_index) {
     lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(top, lv_color_hex(COL_TURQUOISE), 0);
 
-    s_hour_content = theme_decor(panel);
-    lv_obj_set_pos(s_hour_content, 0, 0);
-    lv_obj_set_size(s_hour_content, kPanelW, UI_HEIGHT);
+    s_panel_content = theme_decor(panel);
+    lv_obj_set_pos(s_panel_content, 0, 0);
+    lv_obj_set_size(s_panel_content, kPanelW, UI_HEIGHT);
+    return panel;
+}
 
-    hour_panel_render(d, hour_index);
-
-    // Expand out of the tapped column. Hours past the strip (a neighbour of
-    // a neighbour) have no column; they open from the panel's own place.
-    s_hour_from_x = hour_index < WX_HOURLY_SLOTS
-                        ? LAYOUT_HOURS_X + hour_index * LAYOUT_HOUR_COL_W
-                        : kPanelX;
+// Expand the panel out of the tapped column. A column off the screen (a
+// neighbour of a neighbour) opens from the panel's own place.
+void panel_open_from(int from_x, int from_w) {
+    s_panel_from_x = from_x;
+    s_panel_from_w = from_w;
     lv_anim_t a;
     lv_anim_init(&a);
-    lv_anim_set_var(&a, panel);
+    lv_anim_set_var(&a, s_panel);
     lv_anim_set_time(&a, UI_OVERLAY_ANIM_MS);
     lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
     lv_anim_set_values(&a, 0, 256);
     lv_anim_set_exec_cb(&a, panel_geom_cb);
     lv_anim_start(&a);
-    panel_geom_cb(panel, 0);
+    panel_geom_cb(s_panel, 0);
 }
+
+}  // namespace
+
+void overlays_show_hour(int hour_index) {
+    WxData d;
+    weather_snapshot(d);
+    if (!d.valid || hour_index < 0 || hour_index >= d.hour_count) return;
+
+    // Already open: re-point the panel without closing it.
+    if (s_kind == OverlayKind::Hour && s_panel) {
+        s_panel_index = hour_index;
+        hour_panel_render(d, hour_index);
+        return;
+    }
+
+    lv_obj_t *root = make_backdrop();
+    make_column_panel(root, OverlayKind::Hour, hour_index);
+    hour_panel_render(d, hour_index);
+    panel_open_from(hour_index < WX_HOURLY_SLOTS ? LAYOUT_HOURS_X + hour_index * LAYOUT_HOUR_COL_W
+                                                 : kPanelX,
+                    LAYOUT_HOUR_COL_W);
+}
+
+
+// ---------------------------------------------------------------------------
+// Day detail - the Hour Detail's shape, for one day of the ten: what a whole
+// day is planned around rather than what an hour feels like. High and low
+// together, the UV peak, the chance and amount of rain, the strongest wind,
+// and the two times the sun crosses the horizon. Three neighbour days either
+// side re-point it, as the hours do.
+// ---------------------------------------------------------------------------
+namespace {
+
+constexpr int kDayColX[3] = {12, 116, 200};   // the third is wider for a time
+
+// One neighbour column: weekday, glyph, high, and a full-height tap target.
+void day_neighbour_column(lv_obj_t *parent, int x, const WxData &d, int index) {
+    if (index < 0 || index >= d.day_count) return;
+    const WxDay &day = d.days[index];
+    const lv_color_t tc = theme_temp_color(day.temp_max, d.imperial);
+    char buf[16];
+
+    lv_obj_t *name = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "");
+    if (index == 0) {
+        lv_label_set_text(name, "TODAY");
+        lv_obj_set_style_text_color(name, lv_color_hex(COL_TURQUOISE), 0);
+    } else {
+        fmt_weekday(day.time, d.utc_offset, buf, sizeof(buf));
+        lv_label_set_text(name, buf);
+    }
+    lv_obj_set_style_text_letter_space(name, 1, 0);
+    lv_obj_set_style_text_align(name, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(name, kNeighbourW);
+    lv_obj_set_pos(name, x, kNeighbourHourY);
+
+    lv_obj_t *icon = theme_label(parent, &icons_sm, COL_ALUMINUM,
+                                 icon_for(wx_icon_for(day.code, true)));
+    lv_obj_set_style_text_color(icon, tc, 0);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(icon, kNeighbourW);
+    lv_obj_set_pos(icon, x, kNeighbourIconY);
+
+    fmt_temp_plain(day.temp_max, buf, sizeof(buf));
+    lv_obj_t *high = theme_label(parent, &font_title, COL_ALUMINUM, buf);
+    lv_obj_set_style_text_font(high, strlen(buf) >= 3 ? &font_hour_narrow : &font_title, 0);
+    lv_obj_set_style_text_color(high, tc, 0);
+    lv_obj_set_style_text_align(high, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(high, kNeighbourW);
+    lv_label_set_long_mode(high, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(high, x, kNeighbourTempY);
+
+    lv_obj_t *hit = lv_obj_create(parent);
+    lv_obj_remove_style_all(hit);
+    lv_obj_set_pos(hit, x, 0);
+    lv_obj_set_size(hit, kNeighbourW, UI_HEIGHT);
+    lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(hit, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(hit, neighbour_clicked, LV_EVENT_CLICKED,
+                        reinterpret_cast<void *>(intptr_t(index)));
+}
+
+void day_panel_render(const WxData &d, int index) {
+    const WxDay &day = d.days[index];
+    const lv_color_t hi_c = theme_temp_color(day.temp_max, d.imperial);
+    const lv_color_t lo_c = theme_temp_color(day.temp_min, d.imperial);
+    char buf[48], val[24], sfx[24];
+
+    lv_obj_clean(s_panel_content);
+    lv_obj_clean(s_panel_neighbours);
+
+    // --- neighbours ---------------------------------------------------------
+    for (int k = 0; k < 3; k++) {
+        day_neighbour_column(s_panel_neighbours, kNeighbourLeftX[k], d, index - 3 + k);
+        day_neighbour_column(s_panel_neighbours, kNeighbourRightX[k], d, index + 1 + k);
+    }
+    neighbour_hairlines();
+
+    // --- panel header -------------------------------------------------------
+    lv_obj_t *c = s_panel_content;
+    snprintf(buf, sizeof(buf), "%s  ·  %s", index == 0 ? "TODAY" : "FORECAST",
+             wx_condition_text(day.code));
+    lv_obj_t *eye = theme_label(c, &font_micro, COL_ALUMINUM_DIM, buf);
+    lv_obj_set_style_text_letter_space(eye, 1, 0);
+    lv_obj_set_width(eye, kPanelW - kPanelPad * 2 - 30);
+    lv_label_set_long_mode(eye, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(eye, kPanelPad, 10);
+
+    fmt_date(day.time, d.utc_offset, buf, sizeof(buf));
+    lv_obj_t *title = theme_label(c, &font_title, COL_ALUMINUM, buf);
+    lv_obj_set_pos(title, kPanelPad, 26);
+
+    lv_obj_t *glyph = theme_label(c, &icons_sm, COL_ALUMINUM,
+                                  icon_for(wx_icon_for(day.code, true)));
+    lv_obj_set_style_text_color(glyph, hi_c, 0);
+    lv_obj_align(glyph, LV_ALIGN_TOP_RIGHT, -kPanelPad, 14);
+
+    lv_obj_t *rule = theme_decor(c);
+    lv_obj_add_style(rule, &style_hairline, 0);
+    lv_obj_set_size(rule, kPanelW - kPanelPad * 2 - 2, 1);
+    lv_obj_set_pos(rule, kPanelPad, kPanelRuleY);
+
+    // --- metric grid, 3 x 2 -------------------------------------------------
+    // High and low share a cell, told apart by colour as they are on Today.
+    fmt_temp(day.temp_max, val, sizeof(val));
+    panel_metric(c, kDayColX[0], kPanelRow1Y, "HIGH  ·  LOW", val, hi_c, nullptr);
+    {
+        lv_obj_t *hi = lv_obj_get_child(c, -1);
+        fmt_temp(day.temp_min, val, sizeof(val));
+        lv_obj_t *lo = theme_label(c, &font_title, COL_ALUMINUM, val);
+        lv_obj_set_style_text_color(lo, lo_c, 0);
+        lv_obj_align_to(lo, hi, LV_ALIGN_OUT_RIGHT_TOP, 8, 0);
+    }
+
+    if (isnan(day.uv_max)) snprintf(val, sizeof(val), "--");
+    else                   snprintf(val, sizeof(val), "%d", int(lroundf(day.uv_max)));
+    panel_metric(c, kDayColX[1], kPanelRow1Y, "UV MAX", val,
+                 isnan(day.uv_max) ? lv_color_hex(COL_ALUMINUM_DIM) : theme_uv_color(day.uv_max),
+                 nullptr);
+
+    fmt_clock(day.sunrise, d.utc_offset, buf, sizeof(buf));
+    // "6:42 AM" as a Title value with the AM as its suffix, the way MPH hangs
+    // off a wind speed: the column is not wide enough for the whole string
+    // in 30px, and the small suffix is the panel's existing habit.
+    char *sp = strchr(buf, ' ');
+    if (sp) { *sp = '\0'; snprintf(sfx, sizeof(sfx), "%s", sp + 1); } else sfx[0] = '\0';
+    panel_metric(c, kDayColX[2], kPanelRow1Y, "SUNRISE", buf, lv_color_hex(COL_OAT), sfx);
+
+    snprintf(val, sizeof(val), "%d%%", day.precip_prob_max);
+    if (day.precip_sum > 0.0f) {
+        snprintf(sfx, sizeof(sfx), d.imperial ? "%.2f\"" : "%.1fMM", day.precip_sum);
+    } else {
+        sfx[0] = '\0';
+    }
+    panel_metric(c, kDayColX[0], kPanelRow2Y, "RAIN CHANCE", val,
+                 lv_color_hex(day.precip_prob_max >= 10 ? COL_TURQUOISE : COL_ALUMINUM_DIM), sfx);
+
+    snprintf(val, sizeof(val), "%.0f", day.wind_max);
+    panel_metric(c, kDayColX[1], kPanelRow2Y, "WIND MAX", val, lv_color_hex(COL_SKY),
+                 d.imperial ? "MPH" : "KM/H");
+
+    fmt_clock(day.sunset, d.utc_offset, buf, sizeof(buf));
+    sp = strchr(buf, ' ');
+    if (sp) { *sp = '\0'; snprintf(sfx, sizeof(sfx), "%s", sp + 1); } else sfx[0] = '\0';
+    panel_metric(c, kDayColX[2], kPanelRow2Y, "SUNSET", buf, lv_color_hex(COL_SUNSET), sfx);
+}
+
+}  // namespace
+
+void overlays_show_day(int day_index) {
+    WxData d;
+    weather_snapshot(d);
+    if (!d.valid || day_index < 0 || day_index >= d.day_count) return;
+
+    if (s_kind == OverlayKind::Day && s_panel) {
+        s_panel_index = day_index;
+        day_panel_render(d, day_index);
+        return;
+    }
+
+    lv_obj_t *root = make_backdrop();
+    make_column_panel(root, OverlayKind::Day, day_index);
+    day_panel_render(d, day_index);
+    panel_open_from(LAYOUT_SAFE + day_index * LAYOUT_DAY_COL_W, LAYOUT_DAY_COL_W);
+}
+
+// ---------------------------------------------------------------------------
+// The System gate. A drawer full of addresses and a FORGET NETWORK button
+// should not be one accidental swipe from a wall panel, so it is not on the
+// strip at all. A swipe that reaches from one edge of the glass to the other
+// puts a settings button in the middle of the screen, over whatever is
+// there, with three dots beside it. Three taps in quick succession light the
+// dots left to right and open the drawer; a pause lets the button fade.
+// ---------------------------------------------------------------------------
+namespace {
+
+constexpr int kGateButton = 56;
+constexpr int kGateDot    = 6;
+constexpr int kGateDotGap = 6;
+constexpr int kGateGap    = 12;    // between the button and the dots
+constexpr int kGateW      = kGateButton + kGateGap + UI_GATE_TAPS * kGateDot
+                            + (UI_GATE_TAPS - 1) * kGateDotGap;
+
+void gate_close() {
+    if (s_gate_timer) { lv_timer_del(s_gate_timer); s_gate_timer = nullptr; }
+    if (s_gate) { lv_obj_del_async(s_gate); s_gate = nullptr; }
+    for (auto &dot : s_gate_dots) dot = nullptr;
+    s_gate_taps = 0;
+}
+
+void gate_fade_done(lv_anim_t *a) {
+    LV_UNUSED(a);
+    gate_close();
+}
+
+// The window closed without the third tap: fade the button out, and take
+// its taps with it - the next edge swipe starts again from nothing.
+void gate_expired(lv_timer_t *t) {
+    LV_UNUSED(t);
+    lv_timer_del(s_gate_timer);
+    s_gate_timer = nullptr;
+    if (s_gate == nullptr) return;
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s_gate);
+    lv_anim_set_time(&a, UI_OVERLAY_ANIM_MS);
+    lv_anim_set_values(&a, LV_OPA_COVER, LV_OPA_TRANSP);
+    lv_anim_set_exec_cb(&a, [](void *o, int32_t v) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t *>(o), v, 0);
+    });
+    lv_anim_set_ready_cb(&a, gate_fade_done);
+    lv_anim_start(&a);
+    // A fading button takes no taps.
+    lv_obj_clear_flag(s_gate, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t *btn = lv_obj_get_child(s_gate, 0);
+    if (btn) lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+}
+
+void gate_arm() {
+    if (s_gate_timer) lv_timer_reset(s_gate_timer);
+    else              s_gate_timer = lv_timer_create(gate_expired, UI_GATE_WINDOW_MS, nullptr);
+}
+
+void gate_tapped(lv_event_t *e) {
+    LV_UNUSED(e);
+    if (swallow_click() || s_gate == nullptr) return;
+    backlight_note_activity();
+
+    if (s_gate_taps < UI_GATE_TAPS) {
+        lv_obj_t *dot = s_gate_dots[s_gate_taps];
+        if (dot) lv_obj_set_style_bg_color(dot, lv_color_hex(COL_TURQUOISE), 0);
+    }
+    s_gate_taps++;
+
+    if (s_gate_taps >= UI_GATE_TAPS) {
+        gate_close();
+        overlays_dismiss();
+        screens_show_position(-1, true);
+        return;
+    }
+    gate_arm();
+}
+
+void gate_show() {
+    gate_close();
+
+    // Transparent full-width strip on the top layer, so the button can be
+    // centred by LVGL and the dots placed beside it; only the button takes
+    // taps, everything around it stays live.
+    s_gate = theme_decor(lv_layer_top());
+    lv_obj_set_size(s_gate, kGateW, kGateButton);
+    lv_obj_align(s_gate, LV_ALIGN_CENTER, kGateW / 2 - kGateButton / 2, 0);   // the button, not the group, on centre
+
+    lv_obj_t *btn = pill(s_gate, 0, 0, kGateButton, kGateButton, ICON_SETTINGS, &icons_sm,
+                         COL_ALUMINUM, COL_SURFACE_HI, gate_tapped);
+    lv_obj_set_style_border_color(btn, lv_color_hex(COL_RIVET), 0);
+    lv_obj_set_style_border_width(btn, 1, 0);
+    lv_obj_set_style_shadow_color(btn, lv_color_hex(COL_GROUND), 0);
+    lv_obj_set_style_shadow_opa(btn, LV_OPA_70, 0);
+    lv_obj_set_style_shadow_width(btn, 18, 0);
+
+    for (int i = 0; i < UI_GATE_TAPS; i++) {
+        lv_obj_t *dot = theme_decor(s_gate);
+        lv_obj_set_size(dot, kGateDot, kGateDot);
+        lv_obj_set_pos(dot, kGateButton + kGateGap + i * (kGateDot + kGateDotGap),
+                       (kGateButton - kGateDot) / 2);
+        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(dot, lv_color_hex(COL_ALUMINUM_DIM), 0);
+        s_gate_dots[i] = dot;
+    }
+
+    // Fade in, quicker than the overlays: it should feel like a response to
+    // the swipe, not a scene change.
+    lv_obj_set_style_opa(s_gate, LV_OPA_TRANSP, 0);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s_gate);
+    lv_anim_set_time(&a, 120);
+    lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_exec_cb(&a, [](void *o, int32_t v) {
+        lv_obj_set_style_opa(static_cast<lv_obj_t *>(o), v, 0);
+    });
+    lv_anim_start(&a);
+
+    gate_arm();
+}
+
+}  // namespace
+
+void overlays_note_edge_swipe() { s_gate_requested = true; }
 
 // ---------------------------------------------------------------------------
 // Now detail (design/SPEC.md §3) - current conditions, with the day's sun arc
@@ -1074,10 +1388,17 @@ void overlays_show_quick_settings() {
 }
 
 void overlays_tick() {
-    if (s_kind == OverlayKind::Hour && s_hour_pending >= 0) {
-        const int index = s_hour_pending;
-        s_hour_pending = -1;
-        overlays_show_hour(index);
+    if (s_gate_requested) {
+        s_gate_requested = false;
+        // Not from inside the drawer itself, and not while a finger is
+        // still on the brightness bar.
+        if (screens_current_position() != -1 && !s_bar_held) gate_show();
+    }
+    if (s_panel_pending >= 0) {
+        const int index = s_panel_pending;
+        s_panel_pending = -1;
+        if (s_kind == OverlayKind::Hour) overlays_show_hour(index);
+        else if (s_kind == OverlayKind::Day) overlays_show_day(index);
         return;
     }
     if (s_kind != OverlayKind::QuickSettings || s_root == nullptr) return;

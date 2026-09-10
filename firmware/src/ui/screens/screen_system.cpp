@@ -311,7 +311,8 @@ const ScreenDef kDef = {
     create,
     update,
     -1,                                            // a drawer to the left of home
-    UI_SWIPE_LEFT | UI_SWIPE_RIGHT | UI_SWIPE_DOWN,
+    UI_SWIPE_LEFT | UI_SWIPE_DOWN,                 // left puts it away
+    UI_SCREEN_DRAWER,                              // reached through the gate, not a swipe
 };
 
 }  // namespace
