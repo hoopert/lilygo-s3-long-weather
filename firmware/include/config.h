@@ -68,15 +68,6 @@
 #define OTA_HOSTNAME     "airstream-weather"
 #define SETUP_PORTAL_TIMEOUT_S 0       // 0 = stay up until configured
 
-// Known-network list (net_manager.cpp): every network ever saved through the
-// portal is remembered, not just the most recent. At boot and whenever the
-// connection drops, the panel scans and joins whichever known SSID is
-// strongest, so a trailer with two or three regular parking spots reconnects
-// on its own at each one without a re-provisioning trip up the ladder.
-#define WIFI_MAX_KNOWN_NETWORKS     8
-#define WIFI_RETRY_INTERVAL_MS      30000  // how often to re-scan while disconnected
-#define WIFI_ADD_NETWORK_TIMEOUT_S  180    // ADD NETWORK portal auto-closes if unused
-
 // ---------------------------------------------------------------------------
 // Weather
 //
