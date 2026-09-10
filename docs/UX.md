@@ -108,7 +108,7 @@ rather than as something pressable.
 
 ## Overlays
 
-All three live on LVGL's top layer, so they survive a screen change and are
+All four live on LVGL's top layer, so they survive a screen change and are
 written once rather than per screen.
 
 **Hour Detail** — a 300px panel in the centre of the strip that expands out
@@ -122,9 +122,23 @@ glyph, temperature - each a tap target that re-points the panel without
 closing it. A tap on the panel closes it; no printed hint, it is learned in
 one tap.
 
-**Now Detail** — a sun arc from sunrise to sunset with the current position
-marked, and beside it: high/low, humidity, UV (turning sunset-orange at 6 and
-above), gusts, pressure, chance of rain today.
+**Now Detail** — a 192px sun arc from sunrise to sunset, the lower half
+below the screen, with the sun itself riding the track on a ground-coloured
+puck at the current position; `DAYLIGHT` and the two times sit inside it.
+Beside it, six Title 30 values: high/low, humidity, UV (sunset-orange at 6
+and above); gusts with cardinal, pressure, visibility. Pressure is spoken,
+not numeric: the reading sits subdued in the label and the cell shows an
+outlook word (`Clear`, `Clearing Slow`, `Storm Risk`...) from the 3-hour
+trend with a six-hour sparkline beneath it. Tapping the cell opens Pressure
+Detail; tapping anywhere else closes.
+
+**Pressure Detail** — the outlook word and its trend caption (`FALLING
+FAST`, `STEADY`...); a 24-hour graph of sea-level pressure on a fixed
+1006-1022 hPa range with the last three hours in the outlook colour; and
+four body effects (joint pain, migraine, sinus and ears, heart strain) each
+with a LOW / MEDIUM / HIGH word. Any HIGH turns the outlook word and the
+header glyph sunset. The rules are `design/logic.json`, implemented in
+`ui/pressure_logic.cpp` and checked against the JSON in CI.
 
 **Quick Settings** — a 130px sheet that drops from the top edge over a 70%
 scrim, so the screen beneath stays legible at 30%. Three control columns:
