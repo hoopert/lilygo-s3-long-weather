@@ -171,6 +171,11 @@ void setup() {
     panel_init();
     backlight_init();       // comes up dark and fades in with the first frame
 
+#if PANEL_BOOT_PROBE
+    backlight_set_immediate(255);
+    panel_boot_probe();
+#endif
+
 #if PANEL_BOOT_SELF_TEST
     // Drive the panel directly, before LVGL exists. See config.h.
     backlight_set_immediate(255);

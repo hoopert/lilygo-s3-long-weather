@@ -198,13 +198,20 @@ again. Once the board is already running this firmware the dialog offers
 after reset are the ones that matter:
 
 ```
-[panel] RDDID    (04)  dummy8: 00 .. .. ..  dummy0: ..
-[panel] RDDPM    (0A)  dummy8: 9C  dummy0: ..
+[probe] 8 steps, 2500ms each. Watch the glass and note the FIRST step that shows turquoise over orange.
+[probe] step 1/8: factory-exact: short init, QSPI held-CS writes, mode 0, 32MHz
+[probe]   RDDPM=0x9C  (holding)
+...
 [panel] power mode 0x9C: booster on, sleep out, normal mode, display ON
-[panel] self-test: turquoise/orange split, backlight full, holding 700ms
+[panel] self-test: turquoise/orange split, backlight full, holding 3000ms
 [touch] CST3530 at 0x58
-[loop] up=5s bl=255/255 flushes=80 heap=136K lvmem=40%
+[loop] up=35s bl=255/255 flushes=80 heap=136K lvmem=40%
 ```
+
+The `[panel] power mode` line is the controller reporting its own state back
+over the bus. It is advisory: LilyGO's driver never reads from the panel, so
+the read format is unverified on this glass and a row of `00`/`FF` does not by
+itself mean the panel is dead.
 
 ### Is it the hardware?
 
@@ -231,7 +238,7 @@ nothing in software will fix it.
 | Board never appears as a serial port | Charge-only USB cable. Try another one first; this is by far the most common cause. |
 | Install button greyed out or missing | Browser without Web Serial (Safari, Firefox). Use Chrome, Edge, or Opera. |
 | Flash fails partway | Force download mode: hold BOOT, tap RST, release BOOT, retry. |
-| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing) or the installer page). Boot prints a `[panel] power mode 0x..` line - that is the display controller reporting its own state back over the bus. **`display ON, sleep out`** means the controller heard every command and the fault is downstream: pixels or backlight - the ~700ms boot splash (top half turquoise, bottom orange, no LVGL involved) tells you which. **`no reply on QSPI`** means the controller never answered; see [Is it the hardware?](#is-it-the-hardware) below. If `[loop] up=... flushes=...` never appears the main loop is hung. |
+| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). With `PANEL_BOOT_PROBE` on (the default while the panel is being brought up), boot walks eight panel configurations, holding a turquoise-over-orange fill for 2.5s each and printing `[probe] step N/8`. **Note the first step that shows colour** and send it with the `[probe]` lines. If none of the eight shows anything, flash LilyGO's own image (below): if that lights, the fault is still this firmware's and the console output is what will find it; if that is black too, the board is faulty. |
 | Colors look lurid — reds and blues swapped | `LV_COLOR_16_SWAP` in `firmware/include/lv_conf.h`. It should be `1`. |
 | Display is upside down | Change `UI_ROTATION` in `firmware/include/config.h` from `LV_DISP_ROT_90` to `LV_DISP_ROT_270`, and set both `TOUCH_INVERT_X` and `TOUCH_INVERT_Y` to `true`. |
 | Taps land in the wrong place | Swipe to the System screen and watch the **TOUCH / RAW XY** readout while pressing each corner. Then flip `TOUCH_INVERT_X` / `TOUCH_INVERT_Y` to match. |
