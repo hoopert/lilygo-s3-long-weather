@@ -224,6 +224,7 @@ and committed, so a normal build needs no Node toolchain.
 
 | Cut | Face | Size | Coverage |
 |---|---|---|---|
+| `font_clock` | Jost\* SemiBold | 128 | digits and a colon - the Night Mode clock |
 | `font_hero` | Jost\* SemiBold | 72 | digits and marks |
 | `font_title` | Jost\* Medium | 30 | full ASCII |
 | `font_hour_narrow` | Jost\* Medium | 24 | digits and marks - hourly temperatures at three digits; `font_title` otherwise |

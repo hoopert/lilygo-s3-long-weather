@@ -88,6 +88,7 @@
 
 #define LV_FONT_CUSTOM_DECLARE  \
     LV_FONT_DECLARE(font_hero)  \
+    LV_FONT_DECLARE(font_clock) \
     LV_FONT_DECLARE(font_title) \
     LV_FONT_DECLARE(font_hour_narrow) \
     LV_FONT_DECLARE(icons_md) \

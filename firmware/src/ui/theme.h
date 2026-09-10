@@ -40,6 +40,7 @@
 // ---------------------------------------------------------------------------
 // Type scale. Five cuts, no more - see docs/DESIGN_PROMPT.md.
 // ---------------------------------------------------------------------------
+LV_FONT_DECLARE(font_clock);   // Jost* SemiBold 128 - digits and a colon; the Night Mode clock
 LV_FONT_DECLARE(font_hero);    // Jost* SemiBold 72 - temperature only
 LV_FONT_DECLARE(font_title);   // Jost* Medium   30
 LV_FONT_DECLARE(font_hour_narrow); // Jost* Medium 24 - hourly temperatures at three digits (font_title otherwise)
@@ -63,9 +64,6 @@ LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micr
 #define LAYOUT_COLUMNS_X   (LAYOUT_STRIP_X + 2)
 #define LAYOUT_HOUR_COL_W  52                                     // eight columns end at x626
 #define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 416
-// Night Mode: the same width carries every other hour in wide columns.
-#define LAYOUT_NIGHT_COLS  (WX_HOURLY_SLOTS / 2)
-#define LAYOUT_NIGHT_COL_W (LAYOUT_STRIP_W / LAYOUT_NIGHT_COLS)   // 104
 // The Forecast screen: ten day columns across the safe width.
 #define LAYOUT_DAY_COL_W   ((UI_WIDTH - LAYOUT_SAFE * 2) / WX_DAILY_DAYS)   // 62
 #define LAYOUT_HEADER_H    22

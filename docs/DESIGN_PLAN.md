@@ -239,9 +239,11 @@ forecast, and Jost gains U+00D7 for `640 × 180`.
 
 Third flash, on the glass rather than the render: the ten-column strip
 with ribbon, rain bars and wind arrows was too crammed to read across a
-trailer. It is now eight columns of hour, 32px glyph and temperature
-(`icons_md`, a new cut), with everything else one tap away in Hour Detail;
-Night Mode shows four wide columns. A ten-day **Forecast** screen sits one
+trailer. The ask was fewer hours, and the first cut over-read it and dropped the
+ribbon, rain and wind rows too; they are back. The strip is the design's,
+in eight 52px columns instead of ten. Night Mode is no longer a dimmer
+weather layout: it is a clock, `h:mm` in a 128px cut (`font_clock`) and
+nothing else, because a nightlight has one thing to say. A ten-day **Forecast** screen sits one
 swipe left of Today (`screen_forecast.cpp`, position +1), fed by
 Open-Meteo's daily rows (`forecast_days=10`, with the hourly window bounded
 by `forecast_hours` so the body stays small). The deep-night backlight

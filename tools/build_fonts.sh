@@ -69,6 +69,7 @@ gen() {
 }
 
 gen Jost-SemiBold 72 "$HERO_RANGE" font_hero
+gen Jost-SemiBold 128 "0x30-0x3A" font_clock   # digits and a colon: the Night Mode clock
 gen Jost-Medium   30 "$FULL_RANGE" font_title
 # The hourly columns are 43px wide and have to hold "100" without clipping, so
 # they get their own cut rather than borrowing font_title. See the note on
