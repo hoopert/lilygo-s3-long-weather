@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 56 px
  * Bpp: 4
- * Opts: --font /tmp/tmp.7gRXgULqAu/MaterialSymbolsRounded.ttf --range 0xE81A,0xEF5E,0xF172,0xEA46,0xE2BD,0xE818,0xF61E,0xF176,0xF61F,0xF61D,0xE2CD,0xF61C,0xEBDB,0xF67F --size 56 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/icons_lg.c
+ * Opts: --font /tmp/tmp.LTx70OPR55/MaterialSymbolsRounded.ttf --range 0xE81A,0xEF5E,0xF172,0xEA46,0xE2BD,0xE818,0xF61E,0xF176,0xF61F,0xF61D,0xE2CD,0xF61C,0xEBDB,0xF67F --size 56 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/icons_lg.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

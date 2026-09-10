@@ -31,18 +31,25 @@
 #define COL_SUNSET       0xE2703A   // heat, alerts
 #define COL_SKY          0x6FA8C7   // wind, cold
 
+// Night Mode (design/SPEC.md §5). Derived, not tokens: the hero is oat mixed
+// 45% toward aluminum-dim; the clock and the strip's hour labels sit below
+// aluminum-dim so the night layout reads as a dimmer room, not a dimmer panel.
+#define COL_NIGHT_HERO 0xB3AB9C
+#define COL_NIGHT_DIM  0x4C555B
+
 // ---------------------------------------------------------------------------
 // Type scale. Five cuts, no more - see docs/DESIGN_PROMPT.md.
 // ---------------------------------------------------------------------------
 LV_FONT_DECLARE(font_hero);    // Jost* SemiBold 72 - temperature only
 LV_FONT_DECLARE(font_title);   // Jost* Medium   30
-LV_FONT_DECLARE(font_hour);    // Jost* Medium   24 - hourly temperatures
+LV_FONT_DECLARE(font_hour_narrow); // Jost* Medium 24 - hourly temperatures at three digits (font_title otherwise)
 LV_FONT_DECLARE(font_body);    // Jost* Regular  20
 LV_FONT_DECLARE(font_label);   // Jost* Medium   15
 LV_FONT_DECLARE(font_micro);   // Jost* Medium   12, tracked, uppercase
 LV_FONT_DECLARE(icons_lg);     // Material Symbols Rounded 56
 LV_FONT_DECLARE(icons_sm);     // Material Symbols Rounded 20
 LV_FONT_DECLARE(icons_ui);     // Material Symbols Rounded 16
+LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micro text
 
 // ---------------------------------------------------------------------------
 // Layout. The panel is 640x180 in app space; these are the seams.
@@ -65,6 +72,13 @@ extern lv_style_t style_title;
 extern lv_style_t style_body;
 extern lv_style_t style_label;
 extern lv_style_t style_micro;
+
+// Press feedback for every tappable pill and button: 90ms to 0.97 scale with
+// a surface-hi fill, and back. Apply with theme_press_feedback(); it adds the
+// style to the object's pressed state and the transition to both states.
+extern lv_style_t style_pressed;
+extern lv_style_t style_press_transition;
+void theme_press_feedback(lv_obj_t *obj);
 
 // The temperature ramp: sky -> turquoise -> oat -> sunset. Reading the strip as
 // a heat map before reading any number is the whole point of it, so this is

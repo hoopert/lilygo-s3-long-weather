@@ -89,13 +89,14 @@
 #define LV_FONT_CUSTOM_DECLARE  \
     LV_FONT_DECLARE(font_hero)  \
     LV_FONT_DECLARE(font_title) \
-    LV_FONT_DECLARE(font_hour)  \
+    LV_FONT_DECLARE(font_hour_narrow) \
     LV_FONT_DECLARE(font_body)  \
     LV_FONT_DECLARE(font_label) \
     LV_FONT_DECLARE(font_micro) \
     LV_FONT_DECLARE(icons_lg)   \
     LV_FONT_DECLARE(icons_sm)   \
-    LV_FONT_DECLARE(icons_ui)
+    LV_FONT_DECLARE(icons_ui)   \
+    LV_FONT_DECLARE(icons_xs)
 
 #define LV_FONT_DEFAULT &font_body
 
@@ -114,6 +115,10 @@
 #define LV_USE_SPAN       0
 #define LV_USE_MENU       0
 #define LV_USE_METER      0
+
+// The setup screen's Wi-Fi join code (design/SPEC.md §7). LVGL's own encoder,
+// ~4KB of flash, no external dependency.
+#define LV_USE_QRCODE     1
 
 // ---------------------------------------------------------------------------
 // Logging - warnings and errors on the serial console, nothing chattier.

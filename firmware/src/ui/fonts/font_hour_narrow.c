@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 24 px
  * Bpp: 4
- * Opts: --font /tmp/tmp.7gRXgULqAu/Jost-Medium.ttf --range 0x2C-0x3A,0xB0,0x20 --size 24 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/font_hour.c
+ * Opts: --font /tmp/tmp.LTx70OPR55/Jost-Medium.ttf --range 0x2C-0x3A,0xB0,0x20 --size 24 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/font_hour_narrow.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -10,11 +10,11 @@
 #include "lvgl.h"
 #endif
 
-#ifndef FONT_HOUR
-#define FONT_HOUR 1
+#ifndef FONT_HOUR_NARROW
+#define FONT_HOUR_NARROW 1
 #endif
 
-#if FONT_HOUR
+#if FONT_HOUR_NARROW
 
 /*-----------------
  *    BITMAPS
@@ -337,9 +337,9 @@ static lv_font_fmt_txt_dsc_t font_dsc = {
 
 /*Initialize a public general font descriptor*/
 #if LV_VERSION_CHECK(8, 0, 0)
-const lv_font_t font_hour = {
+const lv_font_t font_hour_narrow = {
 #else
-lv_font_t font_hour = {
+lv_font_t font_hour_narrow = {
 #endif
     .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,    /*Function pointer to get glyph's data*/
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,    /*Function pointer to get glyph's bitmap*/
@@ -357,5 +357,5 @@ lv_font_t font_hour = {
 
 
 
-#endif /*#if FONT_HOUR*/
+#endif /*#if FONT_HOUR_NARROW*/
 

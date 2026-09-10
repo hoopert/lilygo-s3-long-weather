@@ -12,6 +12,15 @@ lv_style_t style_title;
 lv_style_t style_body;
 lv_style_t style_label;
 lv_style_t style_micro;
+lv_style_t style_pressed;
+lv_style_t style_press_transition;
+
+namespace {
+const lv_style_prop_t kPressProps[] = {
+    LV_STYLE_TRANSFORM_ZOOM, LV_STYLE_BG_COLOR, LV_STYLE_PROP_INV,
+};
+lv_style_transition_dsc_t s_press_tr;
+}  // namespace
 
 namespace {
 
@@ -53,6 +62,16 @@ void theme_init() {
     // The rivet seam. Airstreams are defined by riveted aluminum panel joins,
     // and a 1px hairline between hour columns is the whole of the ornament
     // budget for this design.
+    // Press feedback (design/SPEC.md, "Beyond the tokens"): scale to 0.97 and
+    // fill surface-hi, 90ms each way. transform_zoom is 256 = 1.0.
+    lv_style_transition_dsc_init(&s_press_tr, kPressProps, lv_anim_path_ease_out, 90, 0, nullptr);
+    lv_style_init(&style_pressed);
+    lv_style_set_transform_zoom(&style_pressed, 248);
+    lv_style_set_bg_color(&style_pressed, lv_color_hex(COL_SURFACE_HI));
+    lv_style_set_transition(&style_pressed, &s_press_tr);
+    lv_style_init(&style_press_transition);
+    lv_style_set_transition(&style_press_transition, &s_press_tr);
+
     lv_style_init(&style_hairline);
     lv_style_set_bg_color(&style_hairline, lv_color_hex(COL_RIVET));
     lv_style_set_bg_opa(&style_hairline, LV_OPA_COVER);
@@ -116,4 +135,11 @@ const char *icon_for(WxIcon icon) {
         case WxIcon::ThunderHail:  return ICON_WX_THUNDER_HAIL;
         default:                   return ICON_WX_OVERCAST;
     }
+}
+
+void theme_press_feedback(lv_obj_t *obj) {
+    lv_obj_set_style_transform_pivot_x(obj, lv_obj_get_width(obj) / 2, 0);
+    lv_obj_set_style_transform_pivot_y(obj, lv_obj_get_height(obj) / 2, 0);
+    lv_obj_add_style(obj, &style_press_transition, 0);
+    lv_obj_add_style(obj, &style_pressed, LV_STATE_PRESSED);
 }

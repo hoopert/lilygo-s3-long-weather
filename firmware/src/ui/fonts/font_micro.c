@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 12 px
  * Bpp: 4
- * Opts: --font /tmp/tmp.7gRXgULqAu/Jost-Medium.ttf --range 0x20-0x7E,0xB0,0xB7,0x2013 --size 12 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/font_micro.c
+ * Opts: --font /tmp/tmp.LTx70OPR55/Jost-Medium.ttf --range 0x20-0x7E,0xB0,0xB7,0x2013 --size 12 --bpp 4 --no-compress --format lvgl --lv-include lvgl.h --output /home/user/lilygo-s3-long-weather/firmware/src/ui/fonts/font_micro.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

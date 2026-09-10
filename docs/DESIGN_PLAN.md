@@ -157,19 +157,15 @@ The one phase that changes behaviour.
   pressure drill-down); README and installer feature/gesture text; the
   BOOT_ANIMATION brief marked as delivered by §6.
 
-## Order and size
+## Two flashes
 
-| Phase | PRs | Size | Depends on |
-|---|---|---|---|
-| 1 Foundation | 2 | S | - |
-| 2 Today + Night | 1 | L | 1 |
-| 3 Data + logic | 1 | M | - |
-| 4 Now + Pressure Detail | 1 | L | 1, 3 |
-| 5 Hour Detail | 1 | M | 1 |
-| 6 Quick Settings + System | 1-2 | M | 1 |
-| 7 Boot + Setup + WPA2 | 1 | M | 1 |
-| 8 Docs | 1 | S | all |
+The phases above are PR-sized for review; the board is flashed twice.
 
-Phases 2, 3 and 6 can proceed in parallel after 1. The suggested sequence is
-1 → 2 → 6 → 5 → 3 → 4 → 7 → 8: visible wins first, the new feature once its
-data is proven, the behaviour change last.
+| Flash | Carries | Why this split |
+|---|---|---|
+| **1 - the redesign** | Phases 1, 2, 6, 5, 3, 4: foundation, Today + Night Mode, Quick Settings + System, Hour Detail, pressure data + logic, Now Detail + Pressure Detail | Everything the artboards show, every new feature, one flash. Layout is verified against the renders at 1:1 before each PR merges, and the pressure logic is host-tested in CI, so the only thing the first flash can find is what no render shows: touch targets, live data, motion on the real glass. |
+| **2 - boot, setup, WPA2, and the fix round** | Phases 7 and 8, plus whatever flash 1 turned up | The one behaviour change (a password on the setup AP) rides with the corrections from flash 1, so it is tested on a panel whose UI is already known-good. |
+
+PR order inside flash 1: 1 → 2 → 6 → 5 → 3 → 4, each merged on green
+without a flash between them. Six PRs, one reflash, then a report of what to
+check on the glass.

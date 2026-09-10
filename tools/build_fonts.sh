@@ -73,7 +73,7 @@ gen Jost-Medium   30 "$FULL_RANGE" font_title
 # The hourly columns are 43px wide and have to hold "100" without clipping, so
 # they get their own cut rather than borrowing font_title. See the note on
 # kTempY in screen_today.cpp.
-gen Jost-Medium   24 "$HERO_RANGE" font_hour
+gen Jost-Medium   24 "$HERO_RANGE" font_hour_narrow   # 3-digit fallback for the 30px hourly cut (font_title)
 gen Jost-Regular  20 "$FULL_RANGE" font_body
 gen Jost-Medium   15 "$FULL_RANGE" font_label
 gen Jost-Medium   12 "$FULL_RANGE" font_micro
@@ -97,11 +97,15 @@ curl -sSfL -o "$WORK_DIR/MaterialSymbolsRounded.ttf" "$MATERIAL_SYMBOLS"
 WX_ICONS='0xE81A,0xEF5E,0xF172,0xEA46,0xE2BD,0xE818,0xF61E,0xF176,0xF61F,0xF61D,0xE2CD,0xF61C,0xEBDB,0xF67F'
 # Chrome: droplet, wind, wifi, wifi-off, refresh, settings, brightness-auto,
 # sun, moon, schedule, close, error, done, navigation arrow, battery.
-UI_ICONS='0xE798,0xEFD8,0xE63E,0xE648,0xE5D5,0xE8B8,0xE1AB,0xE518,0xE51C,0xE192,0xE14C,0xE000,0xE876,0xE55D,0xE1A4'
+UI_ICONS='0xE798,0xEFD8,0xE63E,0xE648,0xE5D5,0xE8B8,0xE1AB,0xE518,0xE51C,0xE192,0xE14C,0xE000,0xE876,0xE55D,0xE1A4,0xE9E4,0xE128,0xE10E,0xE023,0xE09C'
+# Tiny cut for glyphs set inline with Micro text: the hourly wind arrow and
+# the refresh pill. navigation, refresh.
+XS_ICONS='0xE55D,0xE5D5'
 
 gen MaterialSymbolsRounded 56 "$WX_ICONS"              icons_lg
 gen MaterialSymbolsRounded 20 "$WX_ICONS,$UI_ICONS"    icons_sm
 gen MaterialSymbolsRounded 16 "$UI_ICONS"              icons_ui
+gen MaterialSymbolsRounded 11 "$XS_ICONS"              icons_xs
 
 echo
 echo "==> Generated into $OUT_DIR:"
