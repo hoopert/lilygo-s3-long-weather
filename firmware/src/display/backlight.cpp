@@ -10,10 +10,14 @@ namespace {
 constexpr int kLedcChannel = 1;
 constexpr int kDutyMax = (1 << BL_PWM_RESOLUTION) - 1;
 
-const uint8_t kManualSteps[] = BL_MANUAL_STEPS;
-constexpr size_t kManualStepCount = sizeof(kManualSteps) / sizeof(kManualSteps[0]);
+const uint8_t kPresets[BL_PRESET_COUNT] = BL_PRESETS;
 
 BacklightMode s_mode = BacklightMode::Auto;
+
+// Where the sun has the panel. A change of phase is the "triggered brightness
+// event" that ends a manual level.
+enum class Phase : uint8_t { Unknown, Day, Twilight, Night, DeepNight };
+Phase s_phase = Phase::Unknown;
 
 // Fade state. Levels are perceptual 0-255; the gamma curve to PWM duty is
 // applied at the very end, in apply_duty().
@@ -24,9 +28,7 @@ uint32_t s_fade_start_ms = 0;
 uint32_t s_fade_len_ms = BL_FADE_MS;
 
 uint32_t s_last_activity_ms = 0;
-uint32_t s_manual_set_ms = 0;
 uint8_t  s_manual_level = BL_LEVEL_DAY;
-size_t   s_manual_index = 0;
 
 // Sun times as seconds since local midnight. The fallback is a temperate
 // mid-latitude day, which is wrong by at most a couple of hours anywhere the
@@ -118,27 +120,41 @@ uint8_t ambient_level_for(int sod) {
     return static_cast<uint8_t>(lroundf(level));
 }
 
-uint8_t compute_target() {
-    const uint32_t now = millis();
+Phase phase_for(int sod) {
+    if (sod < 0) return Phase::Unknown;
+    if (in_deep_night(sod)) return Phase::DeepNight;
+    const int ramp = BL_TWILIGHT_RAMP_MIN * 60;
+    if (sod < s_sunrise_sod - ramp || sod >= s_sunset_sod + ramp) return Phase::Night;
+    if (sod < s_sunrise_sod + ramp || sod >= s_sunset_sod - ramp) return Phase::Twilight;
+    return Phase::Day;
+}
 
+bool presence() { return millis() - s_last_activity_ms < BL_PRESENCE_HOLD_MS; }
+
+uint8_t compute_target() {
     if (s_mode == BacklightMode::Off) return 0;
 
-    if (s_mode == BacklightMode::Manual) {
-        if (now - s_manual_set_ms < BL_MANUAL_REVERT_MS) return s_manual_level;
-        s_mode = BacklightMode::Auto;   // the override has expired
-    }
-
     const int sod = backlight_local_seconds_of_day();
+    const Phase phase = phase_for(sod);
+
+    // The sun moving the panel into a new part of its day is what ends a
+    // manual level. The first known phase after boot does not count: the
+    // clock arriving is not dusk falling.
+    if (phase != Phase::Unknown && s_phase != Phase::Unknown && phase != s_phase &&
+        s_mode == BacklightMode::Manual) {
+        s_mode = BacklightMode::Auto;
+    }
+    if (phase != Phase::Unknown) s_phase = phase;
+
+    // The night clock: the small hours with nobody about, whatever level was
+    // set before. A touch brings that level back.
+    if (phase == Phase::DeepNight && !presence()) return BL_LEVEL_DEEPNIGHT;
+
+    if (s_mode == BacklightMode::Manual) return s_manual_level;
+
     // Without a clock there is no curve to follow, so stay bright rather than
     // guess dark - a panel that is too dim to read looks broken.
-    uint8_t level = (sod < 0) ? BL_LEVEL_DAY : ambient_level_for(sod);
-
-    // Presence boost. Somebody is in front of the panel; give them full output
-    // regardless of what the sun is doing.
-    if (now - s_last_activity_ms < BL_PRESENCE_HOLD_MS) {
-        if (BL_LEVEL_ACTIVE > level) level = BL_LEVEL_ACTIVE;
-    }
-    return level;
+    return (sod < 0) ? BL_LEVEL_DAY : ambient_level_for(sod);
 }
 
 }  // namespace
@@ -220,9 +236,14 @@ int backlight_local_seconds_of_day() {
 }
 
 void backlight_set_manual(uint8_t level) {
+    if (level < BL_LEVEL_MIN) level = BL_LEVEL_MIN;
     s_mode = BacklightMode::Manual;
     s_manual_level = level;
-    s_manual_set_ms = millis();
+    // A finger on the bar expects the glass to follow it: apply now rather
+    // than on the next tick's slow fade. The touch itself is presence, so
+    // this also ends the night clock.
+    s_last_activity_ms = millis();
+    start_fade_to(level, BL_MANUAL_FADE_MS);
 }
 
 void backlight_set_auto() {
@@ -230,34 +251,27 @@ void backlight_set_auto() {
 }
 
 void backlight_cycle_step() {
-    // The BOOT button is the only user button the board exposes (RST resets the
-    // chip in hardware), so a short press walks a fixed ladder rather than
-    // nudging by a delta. The rule is simply "each press is dimmer than the
-    // last, until it wraps back to Auto" - which is what a hand reaching for an
-    // unlabelled button in the dark is expecting.
+    // The BOOT button is the only user button the board exposes (RST resets
+    // the chip in hardware), so a short press walks three rungs of the bar -
+    // its lowest, its middle and its highest division - and then hands back
+    // to Auto. From Auto the first press lands on the lowest; from a level
+    // the bar set by hand, on the next rung above it.
+    const uint8_t low = kPresets[0], mid = kPresets[BL_PRESET_COUNT / 2], high = kPresets[BL_PRESET_COUNT - 1];
     if (s_mode == BacklightMode::Off) {
         s_mode = BacklightMode::Auto;
-        backlight_note_activity();
-        return;
-    }
-
-    if (s_mode == BacklightMode::Auto) {
-        // Entering the ladder: land on the first rung genuinely dimmer than
-        // what is on screen, so the first press visibly does something.
-        s_manual_index = kManualStepCount - 1;
-        for (size_t i = 0; i < kManualStepCount; i++) {
-            if (kManualSteps[i] < s_target) { s_manual_index = i; break; }
-        }
-        backlight_set_manual(kManualSteps[s_manual_index]);
-    } else if (s_manual_index + 1 >= kManualStepCount) {
-        backlight_set_auto();          // past the dimmest rung, back to Auto
+    } else if (s_mode == BacklightMode::Auto) {
+        backlight_set_manual(low);
+    } else if (s_manual_level < mid) {
+        backlight_set_manual(mid);
+    } else if (s_manual_level < high) {
+        backlight_set_manual(high);
     } else {
-        s_manual_index++;
-        backlight_set_manual(kManualSteps[s_manual_index]);
+        backlight_set_auto();
     }
-
     backlight_note_activity();
 }
+
+const uint8_t *backlight_presets() { return kPresets; }
 
 void backlight_toggle_off() {
     s_mode = (s_mode == BacklightMode::Off) ? BacklightMode::Auto : BacklightMode::Off;
@@ -267,13 +281,14 @@ void backlight_toggle_off() {
 bool          backlight_is_off()        { return s_mode == BacklightMode::Off; }
 int      backlight_sunrise_sod() { return s_sunrise_sod; }
 int      backlight_sunset_sod()  { return s_sunset_sod; }
-uint32_t backlight_manual_remaining_ms() {
-    if (s_mode != BacklightMode::Manual) return 0;
-    const uint32_t held = millis() - s_manual_set_ms;
-    return held < BL_MANUAL_REVERT_MS ? BL_MANUAL_REVERT_MS - held : 0;
+bool     backlight_is_daytime() {
+    const Phase p = phase_for(backlight_local_seconds_of_day());
+    return p == Phase::Day || p == Phase::Unknown ||
+           (p == Phase::Twilight && backlight_local_seconds_of_day() < s_sunset_sod - BL_TWILIGHT_RAMP_MIN * 60);
 }
 bool          backlight_is_deep_night() {
-    return s_mode == BacklightMode::Auto && s_target <= BL_LEVEL_DEEPNIGHT;
+    return s_mode != BacklightMode::Off &&
+           phase_for(backlight_local_seconds_of_day()) == Phase::DeepNight && !presence();
 }
 BacklightMode backlight_mode()          { return s_mode; }
 uint8_t       backlight_target_level()  { return s_target; }

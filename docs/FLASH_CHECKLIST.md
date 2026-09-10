@@ -51,8 +51,8 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Sheet | Swipe down: a panel drops from the top over a dimmed Today. Three columns: brightness with a status line (`SUN-DRIVEN · DIMS AT 7:18 PM`), `AUTO`, `REFRESH` with the data age, Wi-Fi bars with the SSID. |
-| Slider | Dragging the slider changes brightness and does **not** close the sheet or change screen. Tap the dimmed area or swipe up to close. |
+| Quick Settings | Swipe down: a full screen. A brightness bar the full width and a fingertip tall, in nine divisions, with the level and a status line (`SUN-DRIVEN · DIMS AT 7:18 PM` or `MANUAL · AUTO AT DUSK`) and an `AUTO` pill; below, the forecast's age with a refresh glyph beside it, and the Wi-Fi bars with the SSID. No IP or update address here (System has them). |
+| The bar | Tap a division: the bar fills to it and the glass changes brightness at once. Drag: the fill and the backlight follow the finger with no lag. Neither closes the screen or changes screen. Tap empty space or swipe up to close. |
 | System | Three wide columns; `airstream-weather.local` on one line; memory in the title bar with a dot; uptime, version and build date in the footer; no brightness row. |
 | CHANGE NETWORK | Two taps, then the panel reboots to the setup screen with a **new** password. |
 
@@ -60,9 +60,9 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Entry | Over about 1.5s the whole weather screen fades out and a big clock fades in: `h:mm` in 128px dim oat, centred, nothing else. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). |
-| Exit | Any touch brings the weather back the same way. |
-| Not triggered | A manual brightness (slider or BOOT button) never enters it, however dark. |
+| Entry | Thirty seconds after the last touch, in the small hours, the whole weather screen fades out over about 1.5s and a big clock fades in: `h:mm` in 128px dim oat, centred, nothing else. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). A manual level does not prevent it. |
+| Exit | Any touch brings the weather back the same way, at whatever level was set before the clock: the manual one if there was one, otherwise the sun's. |
+| Manual levels | A level set on the bar or the button holds through the night and the day until the sun moves the panel into a new part of its day (dawn, day, dusk, night, small hours) or the panel resets; then Auto takes over. |
 
 ## If something is wrong
 

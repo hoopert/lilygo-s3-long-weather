@@ -22,15 +22,18 @@ enum class OverlayKind { None, Hour, Now, Pressure, QuickSettings };
 lv_obj_t   *s_root = nullptr;
 OverlayKind s_kind = OverlayKind::None;
 
-// Live-updating widgets in the quick-settings sheet.
-lv_obj_t *s_qs_slider = nullptr;
+// Live-updating widgets in Quick Settings.
+lv_obj_t *s_qs_bar = nullptr;        // the brightness bar
+lv_obj_t *s_qs_fill = nullptr;       // its filled part
 lv_obj_t *s_qs_auto_pill = nullptr;
 lv_obj_t *s_qs_updated = nullptr;
 lv_obj_t *s_qs_level = nullptr;
 lv_obj_t *s_qs_bl_status = nullptr;
 lv_obj_t *s_qs_bars = nullptr;
 lv_obj_t *s_qs_ssid = nullptr;
-bool      s_slider_held = false;
+bool      s_bar_held = false;
+int       s_bar_press_x = 0;
+bool      s_bar_dragging = false;
 
 // Hour Detail: the centre panel and the neighbour columns either side of it,
 // rebuilt in place when a neighbour is tapped.
@@ -192,19 +195,6 @@ void pressure_cell_cb(lv_event_t *e) {
 
 // --- quick settings callbacks ---------------------------------------------
 
-void slider_cb(lv_event_t *e) {
-    lv_obj_t *slider = lv_event_get_target(e);
-    const lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_PRESSED)  s_slider_held = true;
-    if (code == LV_EVENT_RELEASED) s_slider_held = false;
-
-    if (code == LV_EVENT_VALUE_CHANGED) {
-        backlight_set_manual(uint8_t(lv_slider_get_value(slider)));
-        backlight_note_activity();
-    }
-}
-
 void auto_pill_cb(lv_event_t *e) {
     LV_UNUSED(e);
     if (swallow_click()) return;
@@ -278,9 +268,9 @@ void overlays_dismiss() {
     lv_obj_del_async(s_root);
     s_root = nullptr;
     s_kind = OverlayKind::None;
-    s_qs_slider = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
+    s_qs_bar = s_qs_fill = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
     s_qs_bl_status = s_qs_bars = s_qs_ssid = nullptr;
-    s_slider_held = false;
+    s_bar_held = s_bar_dragging = false;
     s_hour_panel = s_hour_content = s_hour_neighbours = nullptr;
     s_hour_index = s_hour_pending = -1;
 }
@@ -853,46 +843,124 @@ void overlays_show_pressure() {
 }
 
 // ---------------------------------------------------------------------------
-// Quick settings - a 640x130 sheet dropped from the top edge over a scrim
-// (design/SPEC.md §4): brightness, refresh, and the connection facts you
-// want when something is wrong. The sheet, not the scrim, is what slides.
+// Quick settings - the whole screen: a brightness bar you can tap or drag,
+// then the forecast's age with a refresh, and the Wi-Fi. Nothing here that
+// the System screen already says.
 // ---------------------------------------------------------------------------
 namespace {
 
-constexpr int kSheetH      = 130;
-constexpr int kSheetRadius = 8;
-// LVGL rounds all four corners or none, so the sheet is drawn taller than it
-// is and parked kSheetRadius above the screen: the top corners are clipped
-// away and only the bottom ones show. Every y inside the sheet is offset
-// by the same amount.
-constexpr int kSheetTop    = -kSheetRadius;
-constexpr int kSheetDrawH  = kSheetH + kSheetRadius;
-constexpr int kInY         = kSheetRadius;          // sheet-local y of screen y0
-
-constexpr int kEyebrowY = 42;
-constexpr int kControlY = 58;
-constexpr int kStatusY  = 96;
-
-constexpr int kBrightnessX = 10;
-constexpr int kAutoX       = 322;
-constexpr int kForecastX   = 418;
-constexpr int kWifiX       = 556;
+constexpr int kQsRuleY      = 30;
+constexpr int kQsRow1Y      = 38;    // BRIGHTNESS eyebrow
+constexpr int kQsBarY       = 54;
+constexpr int kQsBarH       = 44;    // a fingertip
+constexpr int kQsBarW       = UI_WIDTH - LAYOUT_SAFE * 2;
+constexpr int kQsStatusY    = 104;
+constexpr int kQsRow2Y      = 128;   // FORECAST / WI-FI eyebrows
+constexpr int kQsValueY     = 144;
+constexpr int kQsWifiX      = 400;
+constexpr int kQsDragSlop   = 6;     // px of travel before a press becomes a drag
 
 const uint8_t kWifiBarHeights[4] = {6, 10, 14, 18};
 
-void sheet_y_cb(void *o, int32_t v) { lv_obj_set_y(static_cast<lv_obj_t *>(o), v); }
+// --- the bar's scale ----------------------------------------------------------
+//
+// Nine divisions, each a preset from BL_PRESETS. A preset fills the bar to the
+// END of its division, so tapping the third division lights three of them;
+// a drag runs continuously along the same scale, with the very left edge at
+// BL_LEVEL_MIN. fraction_for() and level_for() are inverses.
+float fraction_for(uint8_t level) {
+    const uint8_t *p = backlight_presets();
+    const int n = BL_PRESET_COUNT;
+    if (level <= BL_LEVEL_MIN) return 0.0f;
+    uint8_t lo = BL_LEVEL_MIN;
+    for (int k = 0; k < n; k++) {
+        if (level <= p[k]) {
+            const float t = (p[k] == lo) ? 1.0f : float(level - lo) / float(p[k] - lo);
+            return (float(k) + t) / float(n);
+        }
+        lo = p[k];
+    }
+    return 1.0f;
+}
 
-// "SUN-DRIVEN · DIMS AT 7:18 PM" or "MANUAL · AUTO IN 3H 42M": what the
-// brightness is doing and when it will next change on its own. The dimming
-// begins a twilight ramp before sunset, so that is the time quoted.
+uint8_t level_for(float fraction) {
+    const uint8_t *p = backlight_presets();
+    const int n = BL_PRESET_COUNT;
+    if (fraction <= 0.0f) return BL_LEVEL_MIN;
+    if (fraction >= 1.0f) return p[n - 1];
+    const float pos = fraction * float(n);
+    int k = int(pos);
+    if (k >= n) k = n - 1;
+    const float t = pos - float(k);
+    const uint8_t lo = (k == 0) ? BL_LEVEL_MIN : p[k - 1];
+    return uint8_t(lroundf(float(lo) + (float(p[k]) - float(lo)) * t));
+}
+
+void bar_show_level(uint8_t level) {
+    if (s_qs_fill) {
+        int w = int(lroundf(fraction_for(level) * float(kQsBarW)));
+        if (w < kQsBarH) w = (level <= BL_LEVEL_MIN) ? 0 : kQsBarH;   // a pill cannot be thinner than it is tall
+        lv_obj_set_width(s_qs_fill, w);
+    }
+    if (s_qs_level) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%d%%", int(lroundf(level * 100.0f / 255.0f)));
+        lv_label_set_text(s_qs_level, buf);
+    }
+}
+
+// Where the finger is, as a fraction of the bar's width.
+float bar_fraction_under_finger() {
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev == nullptr || s_qs_bar == nullptr) return 0.0f;
+    lv_point_t pt;
+    lv_indev_get_point(indev, &pt);
+    lv_area_t a;
+    lv_obj_get_coords(s_qs_bar, &a);
+    float f = float(pt.x - a.x1) / float(kQsBarW);
+    if (f < 0.0f) f = 0.0f;
+    if (f > 1.0f) f = 1.0f;
+    return f;
+}
+
+// A press lands on a division and takes its preset at once; a drag past a few
+// pixels of slop turns into fine tuning along the whole scale. Either way the
+// backlight and the bar move with the finger, not after it.
+void bar_cb(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_PRESSED) {
+        s_bar_held = true;
+        s_bar_dragging = false;
+        lv_point_t pt;
+        lv_indev_get_point(lv_indev_get_act(), &pt);
+        s_bar_press_x = pt.x;
+        const float f = bar_fraction_under_finger();
+        int k = int(f * BL_PRESET_COUNT);
+        if (k >= BL_PRESET_COUNT) k = BL_PRESET_COUNT - 1;
+        const uint8_t level = backlight_presets()[k];
+        backlight_set_manual(level);
+        bar_show_level(level);
+    } else if (code == LV_EVENT_PRESSING) {
+        lv_point_t pt;
+        lv_indev_get_point(lv_indev_get_act(), &pt);
+        if (!s_bar_dragging && abs(int(pt.x) - s_bar_press_x) < kQsDragSlop) return;
+        s_bar_dragging = true;
+        const uint8_t level = level_for(bar_fraction_under_finger());
+        if (level != backlight_target_level()) {
+            backlight_set_manual(level);
+            bar_show_level(level);
+        }
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        s_bar_held = false;
+        s_bar_dragging = false;
+    }
+}
+
+// "SUN-DRIVEN · DIMS AT 7:18 PM" or "MANUAL · AUTO AT DUSK": what the
+// brightness is doing and when it will next change on its own.
 void brightness_status(char *out, size_t len) {
     if (backlight_mode() == BacklightMode::Manual) {
-        const uint32_t left = backlight_manual_remaining_ms() / 60000u;
-        if (left >= 60) {
-            snprintf(out, len, "MANUAL  ·  AUTO IN %uH %02uM", unsigned(left / 60), unsigned(left % 60));
-        } else {
-            snprintf(out, len, "MANUAL  ·  AUTO IN %uM", unsigned(left));
-        }
+        snprintf(out, len, "MANUAL  ·  AUTO AT %s", backlight_is_daytime() ? "DUSK" : "DAWN");
         return;
     }
     const int ramp = BL_TWILIGHT_RAMP_MIN * 60;
@@ -914,115 +982,81 @@ void brightness_status(char *out, size_t len) {
 }  // namespace
 
 void overlays_show_quick_settings() {
-    lv_obj_t *root = make_backdrop(true);
+    lv_obj_t *root = make_backdrop();
     s_kind = OverlayKind::QuickSettings;
 
-    // The sheet. Clickable so a tap on it stops there rather than reaching the
-    // scrim's dismiss handler; gestures still bubble to the layer.
-    lv_obj_t *sheet = lv_obj_create(root);
-    lv_obj_remove_style_all(sheet);
-    lv_obj_set_size(sheet, UI_WIDTH, kSheetDrawH);
-    lv_obj_set_pos(sheet, 0, kSheetTop);
-    lv_obj_set_style_radius(sheet, kSheetRadius, 0);
-    lv_obj_set_style_bg_color(sheet, lv_color_hex(COL_SURFACE), 0);
-    lv_obj_set_style_bg_opa(sheet, LV_OPA_COVER, 0);
-    lv_obj_set_style_shadow_color(sheet, lv_color_hex(COL_GROUND), 0);
-    lv_obj_set_style_shadow_opa(sheet, LV_OPA_50, 0);
-    lv_obj_set_style_shadow_width(sheet, 12, 0);
-    lv_obj_set_style_shadow_ofs_y(sheet, 6, 0);
-    lv_obj_clear_flag(sheet, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(sheet, LV_OBJ_FLAG_CLICKABLE);
-
-    // Drops in from above the screen, 220ms ease-out.
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, sheet);
-    lv_anim_set_time(&a, UI_OVERLAY_ANIM_MS);
-    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-    lv_anim_set_values(&a, kSheetTop - kSheetH, kSheetTop);
-    lv_anim_set_exec_cb(&a, sheet_y_cb);
-    lv_anim_start(&a);
-
-    // Drag handle, bottom centre.
-    lv_obj_t *handle = theme_decor(sheet);
-    lv_obj_set_size(handle, 32, 3);
-    lv_obj_set_style_radius(handle, 2, 0);
-    lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(handle, lv_color_hex(COL_RIVET), 0);
-    lv_obj_align(handle, LV_ALIGN_BOTTOM_MID, 0, -5);
-
-    // Header row: eyebrow left, the two addresses right, rule beneath.
-    eyebrow(sheet, LAYOUT_SAFE, kInY + 8, "QUICK SETTINGS");
-
-    char addr[64];
-    if (net_connected()) {
-        snprintf(addr, sizeof(addr), "%s  ·  %s.local", net_ip().c_str(), OTA_HOSTNAME);
-    } else {
-        snprintf(addr, sizeof(addr), "NOT CONNECTED  ·  JOIN \"%s\"", net_ap_name());
-    }
-    lv_obj_t *addr_l = eyebrow(sheet, 0, kInY + 8, addr);
-    lv_obj_align(addr_l, LV_ALIGN_TOP_RIGHT, -LAYOUT_SAFE, kInY + 8);
-
-    lv_obj_t *rule = theme_decor(sheet);
+    eyebrow(root, LAYOUT_SAFE, 8, "QUICK SETTINGS");
+    lv_obj_t *rule = theme_decor(root);
     lv_obj_add_style(rule, &style_hairline, 0);
     lv_obj_set_size(rule, UI_WIDTH - LAYOUT_SAFE * 2, 1);
-    lv_obj_set_pos(rule, LAYOUT_SAFE, kInY + 30);
+    lv_obj_set_pos(rule, LAYOUT_SAFE, kQsRuleY);
 
     // --- Brightness ---------------------------------------------------------
-    eyebrow(sheet, kBrightnessX, kInY + kEyebrowY, "BRIGHTNESS");
-    s_qs_level = eyebrow(sheet, kBrightnessX + 96, kInY + kEyebrowY, "", COL_ALUMINUM);
-
-    lv_obj_t *slider = lv_slider_create(sheet);
-    lv_obj_set_pos(slider, kBrightnessX, kInY + kControlY + 6);
-    lv_obj_set_size(slider, 296, 10);
-    lv_slider_set_range(slider, BL_LEVEL_MIN, 255);
-    lv_slider_set_value(slider, backlight_target_level(), LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(slider, lv_color_hex(COL_RIVET), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_radius(slider, 5, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(slider, lv_color_hex(COL_OAT), LV_PART_INDICATOR);
-    lv_obj_set_style_radius(slider, 5, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(slider, lv_color_hex(COL_OAT), LV_PART_KNOB);
-    lv_obj_set_style_pad_all(slider, 5, LV_PART_KNOB);   // 10px track + 5 each side = 20px knob
-    lv_obj_add_event_cb(slider, slider_cb, LV_EVENT_ALL, nullptr);
-    // The slider owns every touch that starts on it. Without this, LVGL also
-    // reports the drag as a horizontal gesture on the layer above, and the
-    // sheet used to close - and the screen beneath used to change - halfway
-    // through setting the brightness.
-    lv_obj_clear_flag(slider, LV_OBJ_FLAG_GESTURE_BUBBLE);
-    s_qs_slider = slider;
-
-    s_qs_bl_status = eyebrow(sheet, kBrightnessX, kInY + kStatusY, "");
-
-    // --- AUTO ---------------------------------------------------------------
-    s_qs_auto_pill = pill(sheet, kAutoX, kInY + kControlY, 72, 24, "AUTO",
+    eyebrow(root, LAYOUT_SAFE, kQsRow1Y, "BRIGHTNESS");
+    s_qs_level = eyebrow(root, LAYOUT_SAFE + 96, kQsRow1Y, "", COL_ALUMINUM);
+    s_qs_auto_pill = pill(root, UI_WIDTH - LAYOUT_SAFE - 72, kQsRow1Y - 6, 72, 24, "AUTO",
                           &font_micro, COL_GROUND, COL_TURQUOISE, auto_pill_cb);
 
-    // --- Forecast -----------------------------------------------------------
-    // Refresh, with the age of the data beneath it - the question "is this
-    // stale?" is the only reason anyone opens this sheet in a hurry. The glyph
-    // is its own label in the icon cut: the pill's text font is Jost, which
-    // has no icon glyphs, and LVGL logs a missing-glyph warning on every
-    // redraw for a codepoint it cannot draw.
-    eyebrow(sheet, kForecastX, kInY + kEyebrowY, "FORECAST");
-    lv_obj_t *refresh = pill(sheet, kForecastX, kInY + kControlY, 118, 24, "REFRESH",
-                             &font_micro, COL_ALUMINUM, COL_SURFACE_HI, refresh_cb);
-    lv_obj_t *refresh_lbl = lv_obj_get_child(refresh, 0);
-    lv_obj_set_style_text_letter_space(refresh_lbl, 1, 0);
-    lv_obj_align(refresh_lbl, LV_ALIGN_CENTER, 8, 0);
-    lv_obj_t *refresh_ic = theme_label(refresh, &icons_xs, COL_ALUMINUM, ICON_REFRESH);
-    lv_obj_align_to(refresh_ic, refresh_lbl, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+    // The bar: a rivet track the full safe width, a fingertip tall, with the
+    // filled part in oat and eight hairlines marking nine divisions. It owns
+    // every touch that starts on it - no gesture bubbles out of a drag along
+    // it - and it does not bubble clicks to the backdrop either.
+    lv_obj_t *bar = lv_obj_create(root);
+    lv_obj_remove_style_all(bar);
+    lv_obj_set_pos(bar, LAYOUT_SAFE, kQsBarY);
+    lv_obj_set_size(bar, kQsBarW, kQsBarH);
+    lv_obj_set_style_radius(bar, kQsBarH / 2, 0);
+    lv_obj_set_style_bg_color(bar, lv_color_hex(COL_RIVET), 0);
+    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_GESTURE_BUBBLE);
+    lv_obj_add_flag(bar, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(bar, bar_cb, LV_EVENT_ALL, nullptr);
+    s_qs_bar = bar;
 
-    s_qs_updated = eyebrow(sheet, kForecastX, kInY + kStatusY, "");
+    s_qs_fill = theme_decor(bar);
+    lv_obj_set_pos(s_qs_fill, 0, 0);
+    lv_obj_set_size(s_qs_fill, kQsBarH, kQsBarH);
+    lv_obj_set_style_radius(s_qs_fill, kQsBarH / 2, 0);
+    lv_obj_set_style_bg_color(s_qs_fill, lv_color_hex(COL_OAT), 0);
+    lv_obj_set_style_bg_opa(s_qs_fill, LV_OPA_COVER, 0);
+
+    for (int k = 1; k < BL_PRESET_COUNT; k++) {
+        lv_obj_t *div = theme_decor(bar);
+        lv_obj_set_size(div, 1, kQsBarH);
+        lv_obj_set_pos(div, (kQsBarW * k) / BL_PRESET_COUNT, 0);
+        lv_obj_set_style_bg_color(div, lv_color_hex(COL_GROUND), 0);
+        lv_obj_set_style_bg_opa(div, LV_OPA_60, 0);
+    }
+
+    s_qs_bl_status = eyebrow(root, LAYOUT_SAFE, kQsStatusY, "");
+
+    // --- Forecast -----------------------------------------------------------
+    eyebrow(root, LAYOUT_SAFE, kQsRow2Y, "FORECAST");
+    s_qs_updated = theme_label(root, &font_body, COL_ALUMINUM, "");
+    lv_obj_set_pos(s_qs_updated, LAYOUT_SAFE, kQsValueY);
+
+    // Refresh is a glyph beside the age, with a fingertip of hit area.
+    lv_obj_t *refresh = lv_obj_create(root);
+    lv_obj_remove_style_all(refresh);
+    lv_obj_set_size(refresh, 44, 44);
+    lv_obj_add_flag(refresh, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(refresh, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(refresh, refresh_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *refresh_ic = theme_label(refresh, &icons_sm, COL_TURQUOISE, ICON_REFRESH);
+    lv_obj_center(refresh_ic);
+    // Placed after the first tick has set the age text (below).
 
     // --- Wi-Fi --------------------------------------------------------------
-    eyebrow(sheet, kWifiX, kInY + kEyebrowY, "WI-FI");
-    s_qs_bars = theme_signal_bars(sheet, kWifiX, kInY + kControlY + 3, kWifiBarHeights);
-    s_qs_ssid = eyebrow(sheet, kWifiX, kInY + kStatusY, "", COL_ALUMINUM);
-    lv_obj_set_width(s_qs_ssid, UI_WIDTH - LAYOUT_SAFE - kWifiX);
+    eyebrow(root, kQsWifiX, kQsRow2Y, "WI-FI");
+    s_qs_bars = theme_signal_bars(root, kQsWifiX, kQsValueY + 4, kWifiBarHeights);
+    s_qs_ssid = theme_label(root, &font_body, COL_ALUMINUM, "");
+    lv_obj_set_pos(s_qs_ssid, kQsWifiX + 34, kQsValueY);
+    lv_obj_set_width(s_qs_ssid, UI_WIDTH - LAYOUT_SAFE - kQsWifiX - 34);
     lv_label_set_long_mode(s_qs_ssid, LV_LABEL_LONG_CLIP);
 
     overlays_tick();
+    lv_obj_update_layout(s_qs_updated);
+    lv_obj_align_to(refresh, s_qs_updated, LV_ALIGN_OUT_RIGHT_MID, 4, 0);
 }
 
 void overlays_tick() {
@@ -1034,18 +1068,10 @@ void overlays_tick() {
     }
     if (s_kind != OverlayKind::QuickSettings || s_root == nullptr) return;
 
-    // Do not fight the finger that is dragging the slider.
-    if (s_qs_slider && !s_slider_held) {
-        lv_slider_set_value(s_qs_slider, backlight_target_level(), LV_ANIM_OFF);
-    }
+    // Do not fight the finger that is on the bar.
+    if (!s_bar_held) bar_show_level(backlight_target_level());
 
     char buf[48];
-    if (s_qs_level) {
-        const int pct = int(lroundf(backlight_target_level() * 100.0f / 255.0f));
-        snprintf(buf, sizeof(buf), "%d%%", pct);
-        lv_label_set_text(s_qs_level, buf);
-    }
-
     if (s_qs_bl_status) {
         brightness_status(buf, sizeof(buf));
         lv_label_set_text(s_qs_bl_status, buf);
@@ -1073,7 +1099,7 @@ void overlays_tick() {
     theme_signal_bars_set(s_qs_bars, net_signal_bars());
     if (s_qs_ssid) {
         const bool up = net_connected();
-        lv_label_set_text(s_qs_ssid, up ? net_ssid().c_str() : "OFFLINE");
+        lv_label_set_text(s_qs_ssid, up ? net_ssid().c_str() : "Offline");
         lv_obj_set_style_text_color(
             s_qs_ssid, lv_color_hex(up ? COL_ALUMINUM : COL_SUNSET), 0);
     }

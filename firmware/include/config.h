@@ -108,8 +108,11 @@
 // trailer, so does the dimming - it stays correct when you move a thousand
 // miles west, with nothing to reconfigure.
 //
-// Touch adds a presence boost on top: any interaction lifts the panel to
-// ACTIVE for a while, then it eases back down to the ambient target.
+// A manual level (the brightness bar, or the BOOT button) holds until the
+// sun moves the panel into a different part of its day - dawn, day, dusk,
+// night, the small hours - or the panel resets; then Auto takes over again.
+// In the small hours, with nobody about, the panel drops to the night clock
+// at BL_LEVEL_DEEPNIGHT; a touch brings back whatever level was set before.
 // ---------------------------------------------------------------------------
 #define BL_PWM_FREQ_HZ    2000   // above audible, and a rate the LED driver is known to track
 #define BL_PWM_RESOLUTION 12     // duty 0-4095; brightness levels stay 0-255
@@ -130,18 +133,19 @@
 #define BL_DEEPNIGHT_START_H 23
 #define BL_DEEPNIGHT_END_H    6
 
-// Presence boost: touch lifts brightness to at least this level, held for this
-// long past the last interaction, then eased back over BL_FADE_MS.
-#define BL_LEVEL_ACTIVE     255
+// Presence: a touch within this long of now keeps the panel out of the
+// night clock. Solar changes ease over BL_FADE_MS; a manual set is as good
+// as immediate, because a finger on the bar expects the glass to follow it.
 #define BL_PRESENCE_HOLD_MS 30000
 #define BL_FADE_MS          1500
+#define BL_MANUAL_FADE_MS   80
 
-// Manual override (BOOT button / brightness slider) reverts to auto after this
-// long, so a nudge at midnight does not leave the panel dark all next day.
-#define BL_MANUAL_REVERT_MS (4UL * 60UL * 60UL * 1000UL)
-
-// Brightness steps the BOOT button cycles through on a short press.
-#define BL_MANUAL_STEPS { 255, 110, 30 }   // bright, medium, dim; then back to Auto
+// The brightness bar's nine divisions, dimmest first. The BOOT button steps
+// through the first, the middle and the last, then back to Auto. Spaced so
+// each step looks like roughly the same change, which a linear ladder does
+// not (the eye reads luminance on a curve).
+#define BL_PRESETS       { 18, 30, 45, 65, 90, 120, 160, 205, 255 }
+#define BL_PRESET_COUNT  9
 
 // ---------------------------------------------------------------------------
 // Interaction timing
