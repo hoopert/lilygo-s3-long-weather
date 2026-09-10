@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "config.h"
 #include "display/backlight.h"
@@ -28,6 +29,15 @@ lv_obj_t *s_qs_bl_status = nullptr;
 lv_obj_t *s_qs_bars = nullptr;
 lv_obj_t *s_qs_ssid = nullptr;
 bool      s_slider_held = false;
+
+// Hour Detail: the centre panel and the neighbour columns either side of it,
+// rebuilt in place when a neighbour is tapped.
+lv_obj_t *s_hour_panel = nullptr;
+lv_obj_t *s_hour_content = nullptr;
+lv_obj_t *s_hour_neighbours = nullptr;
+int       s_hour_index = -1;
+int       s_hour_from_x = 0;     // the column the panel expands out of
+int       s_hour_pending = -1;   // a neighbour tap, applied on the next tick
 
 void dismiss_cb(lv_event_t *e) {
     LV_UNUSED(e);
@@ -233,58 +243,267 @@ void overlays_dismiss() {
     s_qs_slider = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
     s_qs_bl_status = s_qs_bars = s_qs_ssid = nullptr;
     s_slider_held = false;
+    s_hour_panel = s_hour_content = s_hour_neighbours = nullptr;
+    s_hour_index = s_hour_pending = -1;
 }
 
 // ---------------------------------------------------------------------------
-// Hour detail - everything Open-Meteo knows about one hour of the forecast.
+// Hour detail (design/SPEC.md §2) - a 300px panel in the centre of the strip
+// that expands out of the column you tapped, with three neighbour hours on
+// either side that re-point it. Everything Open-Meteo knows about one hour
+// that is worth a glance; cloud cover and dew point are not.
 // ---------------------------------------------------------------------------
+namespace {
+
+constexpr int kPanelX      = 170;
+constexpr int kPanelW      = 300;
+constexpr int kPanelPad    = 12;
+constexpr int kPanelRuleY  = 64;
+constexpr int kPanelColX[3] = {12, 116, 214};
+constexpr int kPanelRow1Y  = 68;
+constexpr int kPanelRow2Y  = 120;
+constexpr int kPanelValueDY = 14;
+
+constexpr int kNeighbourW   = 43;
+constexpr int kNeighbourLeftX[3]  = {20, 63, 106};    // hour-3, hour-2, hour-1
+constexpr int kNeighbourRightX[3] = {491, 534, 577};  // hour+1, hour+2, hour+3
+constexpr int kNeighbourHourY = 36;
+constexpr int kNeighbourIconY = 56;
+constexpr int kNeighbourTempY = 82;
+
+// The tapped neighbour is one of the objects a re-render deletes, so the
+// re-render waits for the next tick rather than pulling the floor out from
+// under the event that asked for it.
+void neighbour_clicked(lv_event_t *e) {
+    if (swallow_click()) return;
+    backlight_note_activity();
+    s_hour_pending = int(intptr_t(lv_event_get_user_data(e)));
+}
+
+// Micro label over a Title 30 value, with an optional 12px suffix hanging off
+// the value's baseline - the unit, or the rain accumulation after its chance.
+void panel_metric(lv_obj_t *parent, int x, int y, const char *label,
+                  const char *value, lv_color_t color, const char *suffix) {
+    lv_obj_t *l = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, label);
+    lv_obj_set_style_text_letter_space(l, 1, 0);
+    lv_obj_set_pos(l, x, y);
+
+    lv_obj_t *v = theme_label(parent, &font_title, COL_ALUMINUM, value);
+    lv_obj_set_style_text_color(v, color, 0);
+    lv_obj_set_pos(v, x, y + kPanelValueDY);
+
+    if (suffix && *suffix) {
+        lv_obj_t *sfx = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, suffix);
+        lv_obj_set_style_text_letter_space(sfx, 1, 0);
+        lv_obj_align_to(sfx, v, LV_ALIGN_OUT_RIGHT_BOTTOM, 4, -6);
+    }
+}
+
+// One neighbour column: hour, glyph, temperature, and a full-height tap target.
+void neighbour_column(lv_obj_t *parent, int x, const WxData &d, int index) {
+    if (index < 0 || index >= d.hour_count) return;
+    const WxHour &h = d.hours[index];
+    const lv_color_t tc = theme_temp_color(h.temp, d.imperial);
+    char buf[16];
+
+    lv_obj_t *hour = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "");
+    if (is_current_hour(h.time, d.utc_offset)) {
+        lv_label_set_text(hour, "NOW");
+        lv_obj_set_style_text_color(hour, lv_color_hex(COL_TURQUOISE), 0);
+    } else {
+        fmt_hour(h.time, d.utc_offset, buf, sizeof(buf));
+        lv_label_set_text(hour, buf);
+    }
+    lv_obj_set_style_text_letter_space(hour, 1, 0);
+    lv_obj_set_style_text_align(hour, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(hour, kNeighbourW);
+    lv_obj_set_pos(hour, x, kNeighbourHourY);
+
+    lv_obj_t *icon = theme_label(parent, &icons_sm, COL_ALUMINUM,
+                                 icon_for(wx_icon_for(h.code, h.is_day)));
+    lv_obj_set_style_text_color(icon, tc, 0);
+    lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(icon, kNeighbourW);
+    lv_obj_set_pos(icon, x, kNeighbourIconY);
+
+    fmt_temp_plain(h.temp, buf, sizeof(buf));
+    lv_obj_t *temp = theme_label(parent, &font_title, COL_ALUMINUM, buf);
+    lv_obj_set_style_text_font(temp, strlen(buf) >= 3 ? &font_hour_narrow : &font_title, 0);
+    lv_obj_set_style_text_color(temp, tc, 0);
+    lv_obj_set_style_text_align(temp, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(temp, kNeighbourW);
+    lv_label_set_long_mode(temp, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(temp, x, kNeighbourTempY);
+
+    lv_obj_t *hit = lv_obj_create(parent);
+    lv_obj_remove_style_all(hit);
+    lv_obj_set_pos(hit, x, 0);
+    lv_obj_set_size(hit, kNeighbourW, UI_HEIGHT);
+    lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(hit, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(hit, neighbour_clicked, LV_EVENT_CLICKED,
+                        reinterpret_cast<void *>(intptr_t(index)));
+}
+
+void hour_panel_render(const WxData &d, int index) {
+    const WxHour &h = d.hours[index];
+    const bool now = is_current_hour(h.time, d.utc_offset);
+    const lv_color_t tc = theme_temp_color(h.temp, d.imperial);
+    char buf[48], val[24], sfx[24];
+
+    lv_obj_clean(s_hour_content);
+    lv_obj_clean(s_hour_neighbours);
+
+    // --- neighbours ---------------------------------------------------------
+    for (int k = 0; k < 3; k++) {
+        neighbour_column(s_hour_neighbours, kNeighbourLeftX[k], d, index - 3 + k);
+        neighbour_column(s_hour_neighbours, kNeighbourRightX[k], d, index + 1 + k);
+    }
+    const int hair_x[4] = {kNeighbourLeftX[1] - 1, kNeighbourLeftX[2] - 1,
+                           kNeighbourRightX[1] - 1, kNeighbourRightX[2] - 1};
+    for (int x : hair_x) {
+        lv_obj_t *sep = theme_decor(s_hour_neighbours);
+        lv_obj_add_style(sep, &style_hairline, 0);
+        lv_obj_set_size(sep, 1, kNeighbourTempY + 30 - kNeighbourHourY);
+        lv_obj_set_pos(sep, x, kNeighbourHourY);
+        lv_obj_set_style_bg_opa(sep, LV_OPA_50, 0);
+    }
+
+    // --- panel header -------------------------------------------------------
+    lv_obj_t *c = s_hour_content;
+    snprintf(buf, sizeof(buf), "%s  ·  %s", now ? "THIS HOUR" : "FORECAST",
+             wx_condition_text(h.code));
+    lv_obj_t *eye = theme_label(c, &font_micro, COL_ALUMINUM_DIM, buf);
+    lv_obj_set_style_text_letter_space(eye, 1, 0);
+    lv_obj_set_width(eye, kPanelW - kPanelPad * 2 - 30);
+    lv_label_set_long_mode(eye, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(eye, kPanelPad, 10);
+
+    fmt_clock(h.time, d.utc_offset, buf, sizeof(buf));
+    lv_obj_t *title = theme_label(c, &font_title, COL_ALUMINUM, buf);
+    lv_obj_set_pos(title, kPanelPad, 26);
+
+    lv_obj_t *glyph = theme_label(c, &icons_sm, COL_ALUMINUM,
+                                  icon_for(wx_icon_for(h.code, h.is_day)));
+    lv_obj_set_style_text_color(glyph, tc, 0);
+    lv_obj_align(glyph, LV_ALIGN_TOP_RIGHT, -kPanelPad, 14);
+
+    lv_obj_t *rule = theme_decor(c);
+    lv_obj_add_style(rule, &style_hairline, 0);
+    lv_obj_set_size(rule, kPanelW - kPanelPad * 2 - 2, 1);
+    lv_obj_set_pos(rule, kPanelPad, kPanelRuleY);
+
+    // --- metric grid, 3 x 2 -------------------------------------------------
+    fmt_temp(h.temp, val, sizeof(val));
+    panel_metric(c, kPanelColX[0], kPanelRow1Y, "TEMP", val, tc, nullptr);
+
+    fmt_temp(h.apparent, val, sizeof(val));
+    panel_metric(c, kPanelColX[1], kPanelRow1Y, "FEELS LIKE", val,
+                 lv_color_hex(COL_ALUMINUM), nullptr);
+
+    snprintf(val, sizeof(val), "%.0f%%", h.humidity);
+    panel_metric(c, kPanelColX[2], kPanelRow1Y, "HUMIDITY", val,
+                 lv_color_hex(COL_ALUMINUM), nullptr);
+
+    snprintf(val, sizeof(val), "%d%%", h.precip_prob);
+    if (h.precip_amount > 0.0f) {
+        snprintf(sfx, sizeof(sfx), d.imperial ? "%.2f\"" : "%.1fMM", h.precip_amount);
+    } else {
+        sfx[0] = '\0';
+    }
+    panel_metric(c, kPanelColX[0], kPanelRow2Y, "RAIN CHANCE", val,
+                 lv_color_hex(h.precip_prob >= 10 ? COL_TURQUOISE : COL_ALUMINUM_DIM), sfx);
+
+    const char *unit = d.imperial ? "MPH" : "KM/H";
+    snprintf(buf, sizeof(buf), "WIND  %s", wx_cardinal(h.wind_dir));
+    snprintf(val, sizeof(val), "%.0f", h.wind);
+    panel_metric(c, kPanelColX[1], kPanelRow2Y, buf, val, lv_color_hex(COL_SKY), unit);
+
+    snprintf(val, sizeof(val), "%.0f", h.gust);
+    panel_metric(c, kPanelColX[2], kPanelRow2Y, "GUSTS", val, lv_color_hex(COL_SKY), unit);
+}
+
+void panel_geom_cb(void *o, int32_t v) {
+    // v runs 0..256: the panel's rectangle interpolates from the tapped
+    // column's to its resting place, and the content fades up behind it.
+    lv_obj_t *panel = static_cast<lv_obj_t *>(o);
+    const int from_x = s_hour_from_x;
+    const int from_w = LAYOUT_HOUR_COL_W;
+    const int x = from_x + ((kPanelX - from_x) * v) / 256;
+    const int w = from_w + ((kPanelW - from_w) * v) / 256;
+    lv_obj_set_pos(panel, x, 0);
+    lv_obj_set_width(panel, w);
+    if (s_hour_content) lv_obj_set_style_opa(s_hour_content, lv_opa_t(v > 255 ? 255 : v), 0);
+}
+
+}  // namespace
+
 void overlays_show_hour(int hour_index) {
     WxData d;
     weather_snapshot(d);
     if (!d.valid || hour_index < 0 || hour_index >= d.hour_count) return;
 
-    const WxHour &h = d.hours[hour_index];
+    // Already open: re-point the panel without closing it.
+    if (s_kind == OverlayKind::Hour && s_hour_panel) {
+        s_hour_index = hour_index;
+        hour_panel_render(d, hour_index);
+        return;
+    }
+
     lv_obj_t *root = make_backdrop();
     s_kind = OverlayKind::Hour;
+    s_hour_index = hour_index;
 
-    char title[48], buf[32], sub[48];
-    fmt_clock(h.time, d.utc_offset, buf, sizeof(buf));
-    snprintf(title, sizeof(title), "%s  ·  %s", buf, wx_condition_text(h.code));
-    snprintf(sub, sizeof(sub), "%s", is_current_hour(h.time, d.utc_offset)
-                                         ? "THIS HOUR" : "FORECAST");
-    header(root, icon_for(wx_icon_for(h.code, h.is_day)), title, sub);
+    s_hour_neighbours = theme_decor(root);
+    lv_obj_set_pos(s_hour_neighbours, 0, 0);
+    lv_obj_set_size(s_hour_neighbours, UI_WIDTH, UI_HEIGHT);
 
-    // Four columns across the 640px width, two rows. Eight metrics is the most
-    // this strip can hold without the values crowding their own labels.
-    const int col_w = (UI_WIDTH - LAYOUT_SAFE * 2) / 4;
-    const int row1 = 52, row2 = 104;
+    // The panel: surface, rivet sides, turquoise top edge, a soft shadow so it
+    // sits above the neighbours rather than between them. Clickable so a tap
+    // anywhere on it dismisses; no printed hint - it is learned in one tap.
+    lv_obj_t *panel = lv_obj_create(root);
+    lv_obj_remove_style_all(panel);
+    lv_obj_set_size(panel, kPanelW, UI_HEIGHT);
+    lv_obj_set_pos(panel, kPanelX, 0);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(COL_SURFACE), 0);
+    lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(panel, lv_color_hex(COL_RIVET), 0);
+    lv_obj_set_style_border_width(panel, 1, 0);
+    lv_obj_set_style_border_side(panel, LV_BORDER_SIDE_LEFT | LV_BORDER_SIDE_RIGHT, 0);
+    lv_obj_set_style_shadow_color(panel, lv_color_hex(COL_GROUND), 0);
+    lv_obj_set_style_shadow_opa(panel, LV_OPA_70, 0);
+    lv_obj_set_style_shadow_width(panel, 18, 0);
+    lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(panel, dismiss_cb, LV_EVENT_CLICKED, nullptr);
+    s_hour_panel = panel;
 
-    char v[8][24];
-    fmt_temp(h.temp, v[0], sizeof(v[0]));
-    fmt_temp(h.apparent, v[1], sizeof(v[1]));
-    snprintf(v[2], sizeof(v[2]), "%d%%", h.precip_prob);
-    snprintf(v[3], sizeof(v[3]), d.imperial ? "%.2f\"" : "%.1fmm", h.precip_amount);
-    snprintf(v[4], sizeof(v[4]), "%.0f %s", h.wind, d.imperial ? "mph" : "km/h");
-    snprintf(v[5], sizeof(v[5]), "%.0f %s", h.gust, d.imperial ? "mph" : "km/h");
-    snprintf(v[6], sizeof(v[6]), "%.0f%%", h.humidity);
-    fmt_temp(h.dew_point, v[7], sizeof(v[7]));
+    lv_obj_t *top = theme_decor(panel);
+    lv_obj_set_size(top, LV_PCT(100), 2);
+    lv_obj_set_pos(top, 0, 0);
+    lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(top, lv_color_hex(COL_TURQUOISE), 0);
 
-    metric_c(root, LAYOUT_SAFE + col_w * 0, row1, "TEMPERATURE", v[0],
-             theme_temp_color(h.temp, d.imperial));
-    metric(root, LAYOUT_SAFE + col_w * 1, row1, "FEELS LIKE", v[1]);
-    metric(root, LAYOUT_SAFE + col_w * 2, row1, "CHANCE OF RAIN", v[2],
-           h.precip_prob >= 10 ? COL_TURQUOISE : COL_ALUMINUM_DIM);
-    metric(root, LAYOUT_SAFE + col_w * 3, row1, "AMOUNT", v[3],
-           h.precip_amount > 0 ? COL_TURQUOISE : COL_ALUMINUM_DIM);
+    s_hour_content = theme_decor(panel);
+    lv_obj_set_pos(s_hour_content, 0, 0);
+    lv_obj_set_size(s_hour_content, kPanelW, UI_HEIGHT);
 
-    char wind_label[24];
-    snprintf(wind_label, sizeof(wind_label), "WIND  %s", wx_cardinal(h.wind_dir));
-    metric(root, LAYOUT_SAFE + col_w * 0, row2, wind_label, v[4], COL_SKY);
-    metric(root, LAYOUT_SAFE + col_w * 1, row2, "GUSTING", v[5], COL_SKY);
-    metric(root, LAYOUT_SAFE + col_w * 2, row2, "HUMIDITY", v[6]);
-    metric(root, LAYOUT_SAFE + col_w * 3, row2, "DEW POINT", v[7]);
+    hour_panel_render(d, hour_index);
 
-    hint(root, "TAP TO CLOSE");
+    // Expand out of the tapped column. Hours past the strip (a neighbour of
+    // a neighbour) have no column; they open from the panel's own place.
+    s_hour_from_x = hour_index < WX_HOURLY_SLOTS
+                        ? LAYOUT_COLUMNS_X + hour_index * LAYOUT_HOUR_COL_W
+                        : kPanelX;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, panel);
+    lv_anim_set_time(&a, UI_OVERLAY_ANIM_MS);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_set_values(&a, 0, 256);
+    lv_anim_set_exec_cb(&a, panel_geom_cb);
+    lv_anim_start(&a);
+    panel_geom_cb(panel, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -542,6 +761,12 @@ void overlays_show_quick_settings() {
 }
 
 void overlays_tick() {
+    if (s_kind == OverlayKind::Hour && s_hour_pending >= 0) {
+        const int index = s_hour_pending;
+        s_hour_pending = -1;
+        overlays_show_hour(index);
+        return;
+    }
     if (s_kind != OverlayKind::QuickSettings || s_root == nullptr) return;
 
     // Do not fight the finger that is dragging the slider.
