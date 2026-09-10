@@ -202,7 +202,7 @@ after reset are the ones that matter:
 [touch] controller: CST3530 @ 0x58
 [flush] first frame (0,0)-(639,179)
 [wx] located by IP: Los Angeles (33.955, -118.286)
-[loop] up=5s bl=255/255 flushes=12 heap=132K lvmem=40%
+[loop] up=5s bl=255/255 flushes=12 heap=132K lvmem=40% stack=6120
 ```
 
 The `[panel] readback` line is the controller asked for its own state. On the

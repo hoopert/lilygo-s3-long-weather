@@ -217,13 +217,17 @@ void loop() {
         s_last_heartbeat = now;
         lv_mem_monitor_t mon;
         lv_mem_monitor(&mon);
-        Serial.printf("[loop] up=%lus bl=%u/%u flushes=%lu heap=%uK lvmem=%u%%\n",
+        // stack= is the loop task's high-water mark in bytes: the least room
+        // it has ever had. WxData is copied onto this stack by every
+        // weather_snapshot(), so this is the number to watch when it grows.
+        Serial.printf("[loop] up=%lus bl=%u/%u flushes=%lu heap=%uK lvmem=%u%% stack=%u\n",
                       static_cast<unsigned long>(now / 1000),
                       unsigned(backlight_current_level()),
                       unsigned(backlight_target_level()),
                       static_cast<unsigned long>(panel_flush_count()),
                       unsigned(ESP.getFreeHeap() / 1024),
-                      unsigned(mon.used_pct));
+                      unsigned(mon.used_pct),
+                      unsigned(uxTaskGetStackHighWaterMark(nullptr)));
     }
 
     lv_timer_handler();

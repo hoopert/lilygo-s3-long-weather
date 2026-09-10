@@ -24,6 +24,16 @@ permissions:
   id-token: write
 
 jobs:
+  # design/logic.json is a specification, not a picture: the pressure outlook
+  # bands and body-effect thresholds. This compiles the firmware's pure
+  # implementation with the host compiler and checks it against the JSON.
+  logic-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check pressure logic against design/logic.json
+        run: python3 tools/check_pressure_logic.py
+
   build:
     runs-on: ubuntu-latest
     outputs:

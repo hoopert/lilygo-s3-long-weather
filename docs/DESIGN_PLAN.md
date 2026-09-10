@@ -84,7 +84,15 @@ The most visible phase.
   after 23:00 local in Auto the panel cross-fades to the night layout and a
   touch brings the day layout back.
 
-### Phase 3 - Data: pressure history and MSL
+### Phase 3 - Data: pressure history and MSL - merged
+
+Implementation notes: the forward `hours[]` array is unchanged (hours[0] is
+still the current hour, so no screen needed a `now_index`); the history is
+a separate `pressure_history[25]` ending at the current hour, with
+`pressure_delta_3h` computed once per fetch. `ui/pressure_logic.{h,cpp}` is
+checked against `design/logic.json` by `tools/check_pressure_logic.py`
+(8736 threshold-straddling cases) in a `logic-check` CI job. The heartbeat
+prints `stack=` (the loop task's high-water mark, bytes).
 
 Pure data, no UI. Unblocks Phases 4 and 5.
 
