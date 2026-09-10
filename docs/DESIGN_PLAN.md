@@ -118,7 +118,14 @@ Pure data, no UI. Unblocks Phases 4 and 5.
 - **Done when:** both artboards match at 1:1 with live data; the outlook word
   and header glyph go `sunset` when any risk is HIGH.
 
-### Phase 5 - Hour Detail (§2)
+### Phase 5 - Hour Detail (§2) - merged
+
+Implementation notes: a neighbour tap is applied on the next UI tick rather
+than inside its own click event, because the re-render deletes the tapped
+object; neighbours may reach past the ten-hour strip into the 36 fetched
+hours, and a panel opened on one of those expands from its resting place;
+the panel's 2px turquoise top edge is a separate bar because LVGL borders
+are one width on every side.
 
 - Centre panel x170-470 with `turquoise` top border and shadow, expanding
   from the tapped column (220ms); three neighbour hours each side as tap

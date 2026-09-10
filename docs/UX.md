@@ -62,7 +62,7 @@ to leave is redundant by design: the single fastest way to make a touch panel
 feel broken is to be stuck in a view with no obvious way out, and on a
 wall-mounted screen there is no back button, no home gesture, and no way to
 force-quit. Quick Settings is the one exception, for the slider's sake; its
-hint says which way out.
+drag handle says which way out.
 
 ### Swipe / tap disambiguation
 
@@ -111,10 +111,16 @@ rather than as something pressable.
 All three live on LVGL's top layer, so they survive a screen change and are
 written once rather than per screen.
 
-**Hour Detail** — eight metrics in a four-column, two-row grid: temperature
-(colored on the ramp), feels-like, chance of rain, amount, wind with cardinal
-direction, gusts, humidity, dew point. Headed by the hour, the condition, and
-whether it is the hour you are currently in.
+**Hour Detail** — a 300px panel in the centre of the strip that expands out
+of the column you tapped (220ms), with a turquoise top edge and a shadow.
+Headed by the condition and whether it is the hour you are living in, then
+the hour in Title 30 and the glyph. Six metrics in a three-column, two-row
+grid, values in Title 30: temperature (on the ramp), feels-like, humidity;
+chance of rain (with the accumulation as a small suffix), wind with its
+cardinal, gusts. Either side, three neighbour hours at full strength - hour,
+glyph, temperature - each a tap target that re-points the panel without
+closing it. A tap on the panel closes it; no printed hint, it is learned in
+one tap.
 
 **Now Detail** — a sun arc from sunrise to sunset with the current position
 marked, and beside it: high/low, humidity, UV (turning sunset-orange at 6 and
