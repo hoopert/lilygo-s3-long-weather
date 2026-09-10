@@ -192,11 +192,12 @@ The one phase that changes behaviour.
 - **Done when:** a fresh unit boots to the boot screen, falls to Setup with a
   scannable code, joins from a phone camera, and lands on Today.
 
-### Phase 8 - Docs
+### Phase 8 - Docs - merged
 
 - `UX.md` per SPEC's final section (press feedback scale, panel overlays,
   pressure drill-down); README and installer feature/gesture text; the
-  BOOT_ANIMATION brief marked as delivered by §6.
+  BOOT_ANIMATION brief marked as delivered by §6; ARCHITECTURE's file map
+  and bite list (opa recursion, `lv_line` point ownership, corner radius).
 
 ## Two flashes
 
@@ -210,3 +211,9 @@ The phases above are PR-sized for review; the board is flashed twice.
 PR order inside flash 1: 1 → 2 → 6 → 5 → 3 → 4, each merged on green
 without a flash between them. Six PRs, one reflash, then a report of what to
 check on the glass.
+
+**Status.** Flash 1 merged as PRs #18, #19, #20, #21, #22, #23; flash 2's
+phases 7 and 8 followed as #24 and #25 before the board was flashed at all,
+so one flash carries everything and the fix round is whatever that flash
+turns up. What to check on the glass is listed in
+[docs/FLASH_CHECKLIST.md](FLASH_CHECKLIST.md).

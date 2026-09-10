@@ -48,11 +48,19 @@ firmware/src/
     ├── theme.{h,cpp}        palette, type scale, temperature ramp
     ├── format.{h,cpp}       time and temperature formatting
     ├── icons.h              glyph codepoints
+    ├── pressure_logic.{h,cpp}  outlook bands and body effects; pure, host-tested
     ├── screen_manager.{h,cpp}  the screen registry and navigation
-    ├── overlays.{h,cpp}     the three detail overlays
+    ├── overlays.{h,cpp}     the four overlays: Hour, Now, Pressure, Quick Settings
+    ├── startup.{h,cpp}      the boot and setup screens, outside the strip
     ├── screens/             one file per screen
     └── fonts/               generated; do not edit by hand
 ```
+
+`design/` is the hand-off from the design pass: `SPEC.md` is the source of
+truth for every position and colour in `ui/`, `tokens.json` the palette and
+motion, and `logic.json` the pressure rules that `ui/pressure_logic.cpp`
+implements - and that `tools/check_pressure_logic.py` checks it against in
+CI, with the host compiler, on every push.
 
 Dependencies point downward only. `ui/` reads from `net/` and `display/`;
 neither of those knows `ui/` exists. The one exception is deliberate:
@@ -246,6 +254,9 @@ comments pointing at each other.
 | `PANEL_BOOT_PROBE` cycles alternatives at boot | When set, boot walks candidate init tables for 2.5s each with a two-colour fill and a step number on the console. One flash answers "which does this glass want". It is what found the row above. Leave it at 0 once known - it lengthens every boot. |
 | Touch coordinates **are** rotated by us | LVGL sees the UI unrotated, so `touch_read_cb()` maps the digitiser's raw 180×640 point into 640×180 with the inverse of `panel_push_frame()`'s turn. See [Rotation](#rotation). |
 | Gesture limits are not settable in `lv_conf.h` | LVGL 8.4 hardcodes `LV_INDEV_DEF_GESTURE_LIMIT` and `LV_INDEV_DEF_LONG_PRESS_TIME` without an `#ifndef` guard. They are set on the indev driver in `main.cpp`. |
-| Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. |
+| Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. Hour Detail's neighbour taps go further and apply on the next `overlays_tick()`, because the re-render deletes the tapped object. |
+| `opa` is not inherited in LVGL 8.4 - but it is recursive | `LV_STYLE_OPA` carries no inherit flag, so a child does not *read* its parent's opacity; the draw path multiplies them (`lv_obj_get_style_opa_recursive`), which is what lets Today's Night Mode fade a whole layer by setting one value on the container. |
+| `lv_line` keeps a pointer to its points | It does not copy them. Every polyline here (`theme_rivet_row()`, `overlays.cpp`'s `polyline()`) allocates its points in LVGL's heap and frees them from an `LV_EVENT_DELETE` handler. A stack array works until the function returns. |
+| LVGL rounds all four corners or none | The Quick Settings sheet wants rounded bottom corners only, so it is drawn 8px taller than it is and parked 8px above the screen. The Hour Detail panel's turquoise top edge is a separate 2px bar for the same reason: borders are one width on every side. |
 | PSRAM is required | The frame buffer is 230KB. `main.cpp` fails loudly at boot rather than faulting somewhere unhelpful later. |
 | CST3530 must be re-armed after every read | Write `0xD00002AB` or it stops reporting entirely after the first contact. |
