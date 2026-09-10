@@ -23,15 +23,14 @@
 #define FIRMWARE_VERSION "unknown"
 #endif
 
-// The System drawer, to design/SPEC.md §1B: a title bar carrying the memory
-// line and the one action, a rivet-dotted rule, and a three-column grid of
-// facts wide enough that nothing in it wraps.
+// The System drawer: a title bar carrying the one action and the signal
+// bars, a rivet-dotted rule, and a three-column grid of facts. Memory is a
+// pair of bars with a colour, because a number of kilobytes tells nobody
+// whether the panel is healthy.
 
 namespace {
 
 constexpr int kTitleY     = 6;
-constexpr int kMemX       = 124;
-constexpr int kMemY       = 14;
 constexpr int kRuleY      = 40;
 constexpr int kRivetY     = 44;
 constexpr int kGridX[3]   = {10, 220, 430};
@@ -40,19 +39,28 @@ constexpr int kRow1Y      = 56;
 constexpr int kRow2Y      = 104;
 constexpr int kValueDY    = 18;     // label top -> value top (Micro + 6px)
 constexpr int kFooterY    = 148;
-constexpr int kLowHeapK   = 40;     // free heap below this turns the dot sunset
+constexpr int kButtonW    = 168;
+constexpr int kButtonH    = 24;
+constexpr int kBarsW      = 22;     // the signal bars, right of the button
+constexpr int kMemBarW    = 150;
+constexpr int kMemBarH    = 8;
 
 const uint8_t kBarHeights[4] = {5, 8, 11, 14};
 
-enum Cell { CELL_NETWORK, CELL_IP, CELL_LOCATION, CELL_HOST, CELL_TOUCH, CELL_DISPLAY, CELL_COUNT };
+enum Cell { CELL_NETWORK, CELL_IP, CELL_LOCATION, CELL_HOST, CELL_TOUCH, CELL_COUNT };
+
+struct MemBar {
+    lv_obj_t *label;    // "HEAP  149K FREE"
+    lv_obj_t *track;
+    lv_obj_t *fill;
+};
 
 struct Ui {
-    lv_obj_t *mem_dot;
-    lv_obj_t *mem_line;
     lv_obj_t *values[CELL_COUNT];
-    lv_obj_t *bars;         // beside the network value
+    lv_obj_t *bars;         // signal bars, in the title bar
     lv_obj_t *coords;       // Micro, after the town
-    lv_obj_t *display_fmt;  // Micro, after the resolution
+    MemBar    heap;
+    MemBar    psram;
     lv_obj_t *footer;
     lv_obj_t *forget_btn;
     lv_obj_t *forget_lbl;
@@ -88,23 +96,56 @@ void set_value(Cell c, const char *fmt, ...) {
     lv_label_set_text(s_ui.values[c], buf);
 }
 
-// "Sep  9 2026" -> "2026-09-09". The compiler's date is the build date the
-// footer wants, and a bulkhead-mounted panel is identified by photograph.
-void build_date(char *out, size_t len) {
-    static const char kMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
-    const char *d = __DATE__;
-    int month = 0;
-    for (int i = 0; i < 12; i++) {
-        if (strncmp(d, kMonths + i * 3, 3) == 0) { month = i + 1; break; }
+// A memory bar: the fill is what is in use; the colour says whether what is
+// left is comfortable (turquoise), getting tight (oat) or a problem (sunset).
+MemBar mem_bar(lv_obj_t *parent, int x, int y) {
+    MemBar m;
+    m.label = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "");
+    lv_obj_set_style_text_letter_space(m.label, 1, 0);
+    lv_obj_set_pos(m.label, x, y);
+
+    m.track = theme_decor(parent);
+    lv_obj_set_pos(m.track, x, y + 15);
+    lv_obj_set_size(m.track, kMemBarW, kMemBarH);
+    lv_obj_set_style_radius(m.track, kMemBarH / 2, 0);
+    lv_obj_set_style_bg_opa(m.track, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(m.track, lv_color_hex(COL_RIVET), 0);
+
+    m.fill = theme_decor(m.track);
+    lv_obj_set_pos(m.fill, 0, 0);
+    lv_obj_set_size(m.fill, kMemBarH, kMemBarH);
+    lv_obj_set_style_radius(m.fill, kMemBarH / 2, 0);
+    lv_obj_set_style_bg_opa(m.fill, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(m.fill, lv_color_hex(COL_TURQUOISE), 0);
+    return m;
+}
+
+void mem_bar_set(MemBar &m, const char *name, size_t free_bytes, size_t total_bytes,
+                 size_t tight_below, size_t problem_below) {
+    if (m.label == nullptr || total_bytes == 0) return;
+    char buf[32];
+    if (free_bytes >= 1024 * 1024) {
+        snprintf(buf, sizeof(buf), "%s  %.1fM FREE", name, free_bytes / (1024.0f * 1024.0f));
+    } else {
+        snprintf(buf, sizeof(buf), "%s  %uK FREE", name, unsigned(free_bytes / 1024));
     }
-    const int day = atoi(d + 4);
-    const int year = atoi(d + 7);
-    snprintf(out, len, "%04d-%02d-%02d", year, month, day);
+    lv_label_set_text(m.label, buf);
+
+    const float used = 1.0f - float(free_bytes) / float(total_bytes);
+    int w = int(lroundf(used * kMemBarW));
+    if (w < kMemBarH) w = kMemBarH;
+    if (w > kMemBarW) w = kMemBarW;
+    lv_obj_set_width(m.fill, w);
+
+    uint32_t color = COL_TURQUOISE;
+    if (free_bytes < problem_below) color = COL_SUNSET;
+    else if (free_bytes < tight_below) color = COL_OAT;
+    lv_obj_set_style_bg_color(m.fill, lv_color_hex(color), 0);
 }
 
 void reset_forget_pill() {
     s_ui.confirm_forget = false;
-    lv_label_set_text(s_ui.forget_lbl, "CHANGE NETWORK");
+    lv_label_set_text(s_ui.forget_lbl, "FORGET NETWORK");
     lv_obj_set_style_bg_color(s_ui.forget_btn, lv_color_hex(COL_SURFACE_HI), 0);
     lv_obj_set_style_text_color(s_ui.forget_lbl, lv_color_hex(COL_ALUMINUM_DIM), 0);
 }
@@ -133,24 +174,15 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_t *t = theme_label(parent, &font_title, COL_ALUMINUM, "System");
     lv_obj_set_pos(t, LAYOUT_SAFE, kTitleY);
 
-    s_ui.mem_dot = theme_decor(parent);
-    lv_obj_set_size(s_ui.mem_dot, 7, 7);
-    lv_obj_set_style_radius(s_ui.mem_dot, 4, 0);
-    lv_obj_set_style_bg_opa(s_ui.mem_dot, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(s_ui.mem_dot, lv_color_hex(COL_TURQUOISE), 0);
-    lv_obj_set_pos(s_ui.mem_dot, kMemX, kMemY + 3);
-
-    s_ui.mem_line = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "");
-    lv_obj_set_style_text_letter_space(s_ui.mem_line, 1, 0);
-    lv_obj_set_pos(s_ui.mem_line, kMemX + 12, kMemY);
-
-    // The one action. A 24px pill with its touch target grown to 44px so it is
-    // as easy to hit as it is quiet to look at.
+    // The one action, with the signal bars to its right at the edge. A 24px
+    // pill with its touch target grown to 44px so it is as easy to hit as it
+    // is quiet to look at.
+    const int bars_x = UI_WIDTH - LAYOUT_SAFE - kBarsW;
     s_ui.forget_btn = lv_btn_create(parent);
     lv_obj_remove_style_all(s_ui.forget_btn);
-    lv_obj_set_size(s_ui.forget_btn, 168, 24);
-    lv_obj_align(s_ui.forget_btn, LV_ALIGN_TOP_RIGHT, -LAYOUT_SAFE, 8);
-    lv_obj_set_style_radius(s_ui.forget_btn, 12, 0);
+    lv_obj_set_size(s_ui.forget_btn, kButtonW, kButtonH);
+    lv_obj_set_pos(s_ui.forget_btn, bars_x - 12 - kButtonW, 8);
+    lv_obj_set_style_radius(s_ui.forget_btn, kButtonH / 2, 0);
     lv_obj_set_style_bg_opa(s_ui.forget_btn, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(s_ui.forget_btn, lv_color_hex(COL_SURFACE_HI), 0);
     lv_obj_set_ext_click_area(s_ui.forget_btn, 10);
@@ -158,9 +190,11 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_add_event_cb(s_ui.forget_btn, forget_cb, LV_EVENT_CLICKED, nullptr);
 
     s_ui.forget_lbl = theme_label(s_ui.forget_btn, &font_micro, COL_ALUMINUM_DIM,
-                                  "CHANGE NETWORK");
+                                  "FORGET NETWORK");
     lv_obj_set_style_text_letter_space(s_ui.forget_lbl, 1, 0);
     lv_obj_center(s_ui.forget_lbl);
+
+    s_ui.bars = theme_signal_bars(parent, bars_x, 8 + (kButtonH - kBarHeights[3]) / 2, kBarHeights);
 
     lv_obj_t *rule = theme_decor(parent);
     lv_obj_add_style(rule, &style_hairline, 0);
@@ -168,28 +202,18 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_set_pos(rule, LAYOUT_SAFE, kRuleY);
     theme_rivet_row(parent, 16, UI_WIDTH - 16, kRivetY);
 
-    // --- grid -----------------------------------------------------------------
-    for (int i = 1; i < 3; i++) {
-        lv_obj_t *sep = theme_decor(parent);
-        lv_obj_add_style(sep, &style_hairline, 0);
-        lv_obj_set_size(sep, 1, 78);
-        lv_obj_set_pos(sep, kGridX[i] - 1, kRow1Y);
-    }
-
+    // --- grid: three columns, no dividers --------------------------------------
     s_ui.values[CELL_NETWORK]  = cell(parent, 0, kRow1Y, "NETWORK", &font_body);
     s_ui.values[CELL_IP]       = cell(parent, 1, kRow1Y, "IP ADDRESS", &font_body);
     s_ui.values[CELL_LOCATION] = cell(parent, 2, kRow1Y, "LOCATION", &font_body);
     s_ui.values[CELL_HOST]     = cell(parent, 0, kRow2Y, "UPDATE HOST", &font_label);
     s_ui.values[CELL_TOUCH]    = cell(parent, 1, kRow2Y, "TOUCH CONTROLLER", &font_label);
-    s_ui.values[CELL_DISPLAY]  = cell(parent, 2, kRow2Y, "DISPLAY", &font_body);
-
-    // The network value shares its cell with the signal bars, so it is
-    // narrower than the others.
-    lv_obj_set_width(s_ui.values[CELL_NETWORK], 100);
-    s_ui.bars = theme_signal_bars(parent, kGridX[0] + 106, kRow1Y + kValueDY + 6, kBarHeights);
 
     s_ui.coords = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "");
-    s_ui.display_fmt = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, "RGB565");
+
+    // Memory: two bars in the last cell of the second row.
+    s_ui.heap  = mem_bar(parent, kGridX[2], kRow2Y);
+    s_ui.psram = mem_bar(parent, kGridX[2], kRow2Y + 24);
 
     // --- footer ---------------------------------------------------------------
     s_ui.footer = theme_label(parent, &font_micro, COL_NIGHT_DIM, "");
@@ -197,11 +221,21 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_set_pos(s_ui.footer, LAYOUT_SAFE, kFooterY);
 
     set_value(CELL_HOST, "%s.local", OTA_HOSTNAME);
-    set_value(CELL_DISPLAY, "%d × %d", UI_WIDTH, UI_HEIGHT);
-    lv_obj_update_layout(s_ui.values[CELL_DISPLAY]);
-    lv_obj_align_to(s_ui.display_fmt, s_ui.values[CELL_DISPLAY], LV_ALIGN_OUT_RIGHT_BOTTOM, 8, -4);
-
     return parent;
+}
+
+// "Sep  9 2026" -> "2026-09-09". The compiler's date is the build date the
+// footer wants, and a bulkhead-mounted panel is identified by photograph.
+void build_date(char *out, size_t len) {
+    static const char kMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    const char *d = __DATE__;
+    int month = 0;
+    for (int i = 0; i < 12; i++) {
+        if (strncmp(d, kMonths + i * 3, 3) == 0) { month = i + 1; break; }
+    }
+    const int day = atoi(d + 4);
+    const int year = atoi(d + 7);
+    snprintf(out, len, "%04d-%02d-%02d", year, month, day);
 }
 
 void update(lv_obj_t *root) {
@@ -210,14 +244,7 @@ void update(lv_obj_t *root) {
     // Let a half-pressed confirmation lapse rather than sitting armed forever.
     if (s_ui.confirm_forget && millis() - s_ui.confirm_at > 6000) reset_forget_pill();
 
-    // --- title bar ------------------------------------------------------------
-    const unsigned heap_k  = unsigned(ESP.getFreeHeap() / 1024);
-    const unsigned psram_k = unsigned(ESP.getFreePsram() / 1024);
     char buf[64];
-    snprintf(buf, sizeof(buf), "HEAP %uK  ·  PSRAM %uK", heap_k, psram_k);
-    lv_label_set_text(s_ui.mem_line, buf);
-    lv_obj_set_style_bg_color(
-        s_ui.mem_dot, lv_color_hex(heap_k < kLowHeapK ? COL_SUNSET : COL_TURQUOISE), 0);
 
     // --- row 1 ----------------------------------------------------------------
     const bool up = net_connected();
@@ -261,6 +288,13 @@ void update(lv_obj_t *root) {
         set_value(CELL_TOUCH, "%s", touch_chip_name());
         lv_obj_set_style_text_color(s_ui.values[CELL_TOUCH], lv_color_hex(COL_ALUMINUM), 0);
     }
+
+    // Internal heap: a TLS fetch needs ~50K of it; under 40K a fetch can fail.
+    mem_bar_set(s_ui.heap, "HEAP", ESP.getFreeHeap(), ESP.getHeapSize(), 80 * 1024, 40 * 1024);
+    // PSRAM: the frame buffer and the forecast live here; 8MB, and nothing
+    // here should ever get near the end of it.
+    mem_bar_set(s_ui.psram, "PSRAM", ESP.getFreePsram(), ESP.getPsramSize(),
+                2 * 1024 * 1024, 512 * 1024);
 
     // --- footer ---------------------------------------------------------------
     char date[16];
