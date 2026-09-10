@@ -199,7 +199,7 @@ never appears in the repository or the firmware image.
 | Overlay in | 220ms | slide up 24px + fade, ease-out |
 | Brightness ramp | 1500ms | cosine — deliberately imperceptible |
 | Wake from blank | 250ms | fast; waking should feel instant |
-| Press feedback | 90ms | scale to 0.97, fill changes to `surface-hi` |
+| Press feedback | 90ms | fill changes to `surface-hi` (no scale: a zoomed widget needs an alpha layer this 16-bit build cannot draw) |
 | Night Mode in / out | 1500ms | cross-fade, ease in-out, locked to the brightness ramp |
 
 Nothing else animates. The temperature does not count up, the ribbon does not

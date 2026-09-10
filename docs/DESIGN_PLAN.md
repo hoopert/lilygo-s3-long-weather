@@ -217,3 +217,13 @@ phases 7 and 8 followed as #24 and #25 before the board was flashed at all,
 so one flash carries everything and the fix round is whatever that flash
 turns up. What to check on the glass is listed in
 [docs/FLASH_CHECKLIST.md](FLASH_CHECKLIST.md).
+
+**Fix round, from the first flash.** Findings F5 (a rotated `navigation`
+glyph) and the press-feedback scale were wrong: LVGL 8.4 renders any
+transformed widget through an alpha layer, and without
+`LV_COLOR_SCREEN_TRANSP` (32-bit only) the layer cannot be created - the
+widget is skipped and a warning is logged every frame. The wind arrow is now
+one of eight compass glyphs in `icons_xs`; press feedback is the fill change
+alone. The portal's synchronous network scan (13s with a phone attached)
+is now preloaded and asynchronous, and a forecast transfer that drops
+mid-body is retried within seconds rather than after a minute.

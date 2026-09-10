@@ -131,6 +131,33 @@ void net_begin() {
     s_wm.setTitle("Airstream Weather");
     s_wm.setConnectTimeout(20);
 
+    // Scan for networks the moment the portal starts, asynchronously, and
+    // serve the phone from that cache. WiFiManager's default is to scan
+    // synchronously when the phone asks for the network list, which stops
+    // this loop - and the panel, and the portal itself - for as long as the
+    // radio takes; with a client attached to the AP that was 13 seconds on
+    // the glass.
+    // (Public members in WiFiManager 2.0.17; there are no setters.)
+    s_wm._preloadwifiscan = true;
+    s_wm._asyncScan = true;
+    s_wm.setScanDispPerc(true);
+
+    // Timestamps for the setup path, so the next "the portal took two
+    // minutes" report says where the time went: the phone joining the AP,
+    // and the portal page being served.
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t) {
+        if (event == ARDUINO_EVENT_WIFI_AP_STACONNECTED) {
+            Serial.printf("[net] %lums: a device joined the setup network\n",
+                          static_cast<unsigned long>(millis()));
+        } else if (event == ARDUINO_EVENT_WIFI_AP_STADISCONNECTED) {
+            Serial.printf("[net] %lums: a device left the setup network\n",
+                          static_cast<unsigned long>(millis()));
+        }
+    });
+    s_wm.setWebServerCallback([]() {
+        Serial.printf("[net] %lums: portal web server up\n", static_cast<unsigned long>(millis()));
+    });
+
     s_state = NetState::Connecting;
 
     if (s_wm.autoConnect(WIFI_AP_NAME, s_ap_password)) {

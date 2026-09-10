@@ -160,6 +160,16 @@ lv_obj_t *make_layer(lv_obj_t *parent) {
     return l;
 }
 
+// The compass glyph for a bearing, to the nearest 45 degrees.
+const char *wind_arrow_glyph(int toward_deg) {
+    static const char *const kArrows[8] = {
+        ICON_ARROW_N, ICON_ARROW_NE, ICON_ARROW_E, ICON_ARROW_SE,
+        ICON_ARROW_S, ICON_ARROW_SW, ICON_ARROW_W, ICON_ARROW_NW,
+    };
+    const int octant = ((toward_deg % 360 + 360) % 360 + 22) / 45 % 8;
+    return kArrows[octant];
+}
+
 void upper_ascii(char *s) {
     for (; *s; s++) *s = char(toupper(static_cast<unsigned char>(*s)));
 }
@@ -453,14 +463,15 @@ lv_obj_t *create(lv_obj_t *parent) {
         lv_obj_add_flag(w.bar, LV_OBJ_FLAG_HIDDEN);
 
         // The wind row: an arrow and a number, placed as a pair in update()
-        // once the number's width is known. The arrow is a text glyph turned
-        // with a transform; it points where the wind is going, which is the
-        // way a weathervane's tail points and the way people read an arrow.
-        w.wind_arrow = theme_label(day, &icons_xs, COL_SKY, ICON_NAV);
+        // once the number's width is known. The arrow is one of eight compass
+        // glyphs, not a rotated one: rotating any widget in LVGL 8.4 needs an
+        // alpha layer, which this 16-bit build cannot make (it logs a warning
+        // per frame and draws nothing). It points where the wind is going,
+        // which is the way a weathervane's tail points and the way people
+        // read an arrow.
+        w.wind_arrow = theme_label(day, &icons_xs, COL_SKY, ICON_ARROW_N);
         lv_obj_set_size(w.wind_arrow, 12, 12);
         lv_obj_set_style_text_align(w.wind_arrow, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_style_transform_pivot_x(w.wind_arrow, 6, 0);
-        lv_obj_set_style_transform_pivot_y(w.wind_arrow, 6, 0);
         lv_obj_set_pos(w.wind_arrow, cx - 6, kWindY);
         lv_obj_add_flag(w.wind_arrow, LV_OBJ_FLAG_HIDDEN);
 
@@ -551,8 +562,7 @@ void set_wind(HourWidgets &w, int i, const WxHour &h) {
     lv_obj_set_pos(w.wind_speed, start + 14, kWindY);
 
     // wind_dir is where the wind comes from; the arrow shows where it goes.
-    const int deg = (int(lroundf(h.wind_dir)) + 180) % 360;
-    lv_obj_set_style_transform_angle(w.wind_arrow, deg * 10, 0);
+    lv_label_set_text(w.wind_arrow, wind_arrow_glyph((int(lroundf(h.wind_dir)) + 180) % 360));
     lv_obj_clear_flag(w.wind_arrow, LV_OBJ_FLAG_HIDDEN);
 }
 

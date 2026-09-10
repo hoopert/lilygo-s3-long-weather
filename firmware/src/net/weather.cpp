@@ -319,8 +319,24 @@ void weather_task(void *) {
 
             if (s_lat == 0.0f && s_lon == 0.0f) geolocate_by_ip();
 
+            // A transfer that drops mid-body (a TLS receive error shows as
+            // IncompleteInput) is retried after a short pause rather than
+            // in a minute: the first fetch after setup runs while the portal
+            // is being torn down and the phone is still leaving the AP, and
+            // waiting WX_RETRY_INTERVAL_S for that is the difference between
+            // a forecast in ten seconds and one in three minutes.
             bool ok = false;
-            if (!(s_lat == 0.0f && s_lon == 0.0f)) ok = fetch_forecast();
+            if (!(s_lat == 0.0f && s_lon == 0.0f)) {
+                for (int attempt = 0; attempt < WX_QUICK_RETRIES + 1 && !ok; attempt++) {
+                    if (attempt > 0) {
+                        Serial.printf("[wx] retry %d/%d in %ds\n", attempt, WX_QUICK_RETRIES,
+                                      WX_QUICK_RETRY_S);
+                        vTaskDelay(pdMS_TO_TICKS(WX_QUICK_RETRY_S * 1000));
+                        if (WiFi.status() != WL_CONNECTED) break;
+                    }
+                    ok = fetch_forecast();
+                }
+            }
 
             next_attempt_ms = millis() +
                               (ok ? WX_REFRESH_INTERVAL_S : WX_RETRY_INTERVAL_S) * 1000UL;
