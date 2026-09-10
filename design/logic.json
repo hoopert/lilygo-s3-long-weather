@@ -1,0 +1,40 @@
+{
+  "schema": "airstream-design-logic/v1",
+  "comment": "Machine-readable companion to SPEC.md §3 and §3B. Units: pressure hPa, temp °C, humidity %. delta_3h = pressure_now - pressure_3h_ago.",
+  "pressure_outlook_bands": [
+    { "delta_3h_max": -3.0, "word": "Storm Risk",    "caption": "FALLING FAST", "color": "COL_SUNSET" },
+    { "delta_3h_max": -1.0, "word": "Clearing Slow", "caption": "FALLING",      "color": "COL_ALUMINUM" },
+    { "delta_3h_max":  1.0, "word": "Clear",         "caption": "STEADY",       "color": "COL_ALUMINUM" },
+    { "delta_3h_max":  3.0, "word": "Clearing",      "caption": "RISING",       "color": "COL_ALUMINUM" },
+    { "delta_3h_max":  null, "word": "Wind Risk",    "caption": "RISING FAST",  "color": "COL_SUNSET" }
+  ],
+  "outlook_bubble_up": "If any biometric risk is HIGH, the outlook word and header glyph render COL_SUNSET regardless of band color.",
+  "risk_colors": { "LOW": "COL_TURQUOISE", "MEDIUM": "COL_OAT", "HIGH": "COL_SUNSET" },
+  "biometrics": [
+    {
+      "id": "joint_pain", "label": "JOINT PAIN", "glyph": "rheumatology",
+      "high":   "delta_3h <= -2.5 || (pressure < 1008 && humidity > 80)",
+      "medium": "delta_3h <= -1.0 || pressure < 1005"
+    },
+    {
+      "id": "migraine", "label": "MIGRAINE", "glyph": "neurology",
+      "high":   "abs(delta_3h) >= 2.5",
+      "medium": "abs(delta_3h) >= 1.2"
+    },
+    {
+      "id": "sinus_ears", "label": "SINUS & EARS", "glyph": "hearing",
+      "high":   "delta_3h <= -3.0",
+      "medium": "delta_3h <= -1.5 || delta_3h >= 3.0"
+    },
+    {
+      "id": "heart_strain", "label": "HEART STRAIN", "glyph": "cardiology",
+      "high":   "temp_c < 5.0 && pressure > 1022.0",
+      "medium": "temp_c < 10.0 && pressure > 1018.0"
+    }
+  ],
+  "data_requirements": {
+    "pressure_history_hours": 24,
+    "pressure_sample_interval_hours": 1,
+    "also_needed": ["relative_humidity", "temp_c"]
+  }
+}
