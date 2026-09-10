@@ -265,6 +265,13 @@ void backlight_toggle_off() {
 }
 
 bool          backlight_is_off()        { return s_mode == BacklightMode::Off; }
+int      backlight_sunrise_sod() { return s_sunrise_sod; }
+int      backlight_sunset_sod()  { return s_sunset_sod; }
+uint32_t backlight_manual_remaining_ms() {
+    if (s_mode != BacklightMode::Manual) return 0;
+    const uint32_t held = millis() - s_manual_set_ms;
+    return held < BL_MANUAL_REVERT_MS ? BL_MANUAL_REVERT_MS - held : 0;
+}
 bool          backlight_is_deep_night() {
     return s_mode == BacklightMode::Auto && s_target <= BL_LEVEL_DEEPNIGHT;
 }
