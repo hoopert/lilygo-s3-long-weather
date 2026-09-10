@@ -99,7 +99,7 @@ under your thumb instead of after you let go.
 | # | Name | Contents |
 |---|---|---|
 | 1 | **Today** | Current conditions and the next ten hours |
-| 2 | **System** | Network, IP, OTA hostname, location, touch controller and live raw coordinates, brightness mode, free memory, uptime, build. Plus **Change Wi-Fi Network**, which asks for a second tap before rebooting into the setup portal. |
+| 2 | **System** | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
 
 Two screens is the minimum that makes a swipe meaningful. A page indicator sits
 at the bottom centre of every screen — a short turquoise bar for the current
@@ -120,10 +120,15 @@ whether it is the hour you are currently in.
 marked, and beside it: high/low, humidity, UV (turning sunset-orange at 6 and
 above), gusts, pressure, chance of rain today.
 
-**Quick Settings** — a brightness slider with an **AUTO** pill that is filled
-turquoise while auto-dimming is engaged and outlined once an explicit level has
-taken over; a refresh button with the age of the data beside it; and the SSID,
-IP, signal strength and OTA hostname.
+**Quick Settings** — a 130px sheet that drops from the top edge over a 70%
+scrim, so the screen beneath stays legible at 30%. Three control columns:
+brightness (the level, a slider, and what the dimmer is doing - `SUN-DRIVEN ·
+DIMS AT 7:18 PM` or `MANUAL · AUTO IN 3H 42M`) with an **AUTO** pill that is
+filled turquoise while auto-dimming is engaged and drops to `surface-hi` once
+an explicit level has taken over; forecast (a **REFRESH** pill with the age of
+the data beneath it); and Wi-Fi (four signal bars and the SSID). The IP and
+OTA hostname sit in the header. A tap on the scrim or a swipe up closes it;
+the drag handle at the bottom says so.
 
 ## Night Mode
 

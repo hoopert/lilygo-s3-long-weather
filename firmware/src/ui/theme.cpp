@@ -117,6 +117,55 @@ lv_obj_t *theme_decor(lv_obj_t *parent) {
     return o;
 }
 
+lv_obj_t *theme_signal_bars(lv_obj_t *parent, int x, int y, const uint8_t heights[4]) {
+    const int total_h = heights[3];
+    lv_obj_t *row = theme_decor(parent);
+    lv_obj_set_pos(row, x, y);
+    lv_obj_set_size(row, 4 * 4 + 3 * 2, total_h);
+    for (int i = 0; i < 4; i++) {
+        lv_obj_t *bar = theme_decor(row);
+        lv_obj_set_size(bar, 4, heights[i]);
+        lv_obj_set_pos(bar, i * 6, total_h - heights[i]);
+        lv_obj_set_style_radius(bar, 1, 0);
+        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(bar, lv_color_hex(COL_RIVET), 0);
+    }
+    return row;
+}
+
+void theme_signal_bars_set(lv_obj_t *bars, uint8_t lit) {
+    if (bars == nullptr) return;
+    for (int i = 0; i < 4; i++) {
+        lv_obj_t *bar = lv_obj_get_child(bars, i);
+        if (bar == nullptr) break;
+        lv_obj_set_style_bg_color(
+            bar, lv_color_hex(i < lit ? COL_TURQUOISE : COL_RIVET), 0);
+    }
+}
+
+lv_obj_t *theme_rivet_row(lv_obj_t *parent, int x0, int x1, int y) {
+    // A 2px-wide line with a 2px dash and a 14px gap is a 2x2 dot every 16px.
+    // lv_line keeps a pointer to its points rather than copying them, so each
+    // row owns a pair and frees it when the widget goes.
+    lv_point_t *pts = static_cast<lv_point_t *>(lv_mem_alloc(sizeof(lv_point_t) * 2));
+    if (pts == nullptr) return nullptr;
+    pts[0] = {lv_coord_t(x0), lv_coord_t(y + 1)};
+    pts[1] = {lv_coord_t(x1), lv_coord_t(y + 1)};
+    lv_obj_t *line = lv_line_create(parent);
+    lv_obj_remove_style_all(line);
+    lv_obj_clear_flag(line, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_line_set_points(line, pts, 2);
+    lv_obj_add_event_cb(line, [](lv_event_t *e) {
+        lv_mem_free(lv_event_get_user_data(e));
+    }, LV_EVENT_DELETE, pts);
+    lv_obj_set_style_line_width(line, 2, 0);
+    lv_obj_set_style_line_color(line, lv_color_hex(COL_RIVET), 0);
+    lv_obj_set_style_line_dash_width(line, 2, 0);
+    lv_obj_set_style_line_dash_gap(line, 14, 0);
+    lv_obj_set_style_line_rounded(line, false, 0);
+    return line;
+}
+
 const char *icon_for(WxIcon icon) {
     switch (icon) {
         case WxIcon::ClearDay:     return ICON_WX_CLEAR_DAY;

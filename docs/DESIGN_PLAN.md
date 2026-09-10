@@ -127,7 +127,13 @@ Pure data, no UI. Unblocks Phases 4 and 5.
 - **Done when:** tapping an hour opens the panel on it; tapping a neighbour
   moves the panel without closing; tapping the panel closes it.
 
-### Phase 6 - Quick Settings (§4) and System (§1B)
+### Phase 6 - Quick Settings (§4) and System (§1B) - merged
+
+Implementation notes: the sheet is drawn 8px taller and parked 8px above the
+screen so LVGL's all-or-nothing corner radius shows only at the bottom; the
+rivet row is one dashed `lv_line` (`theme_rivet_row`) rather than forty
+objects; the signal bars are shared (`theme_signal_bars`) between the sheet
+and System; the build date comes from `__DATE__`.
 
 - Quick Settings: 640×130 top sheet over a 70% `ground` scrim; slides down
   220ms; drag handle; three control columns and the Wi-Fi bars; tap on the

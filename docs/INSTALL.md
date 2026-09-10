@@ -114,7 +114,7 @@ bulkhead behind a trim panel.
 
 ## Changing the Wi-Fi network later
 
-Swipe to the **System** screen and press **CHANGE WI-FI NETWORK**. It asks for a
+Swipe to the **System** screen and press **CHANGE NETWORK**. It asks for a
 second tap to confirm — a stray touch on a wall-mounted screen should not take
 the trailer's weather offline — and then reboots into the setup portal.
 

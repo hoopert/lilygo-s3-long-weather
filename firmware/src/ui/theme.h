@@ -100,3 +100,15 @@ lv_obj_t *theme_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color,
 // lv_obj_create() makes objects clickable by default, and a 1px decorative
 // hairline that silently eats taps is a genuinely annoying bug to track down.
 lv_obj_t *theme_decor(lv_obj_t *parent);
+
+// Wi-Fi signal bars (design/SPEC.md §1B, §4): four 4px bars, gap 2, bottom
+// aligned, lit turquoise per 25% of the RSSI range and rivet otherwise.
+// `heights` are the four bar heights, shortest first; the widget is as tall
+// as the last one. Update with theme_signal_bars_set(bars, net_signal_bars()).
+lv_obj_t *theme_signal_bars(lv_obj_t *parent, int x, int y, const uint8_t heights[4]);
+void      theme_signal_bars_set(lv_obj_t *bars, uint8_t lit);
+
+// A horizontal row of 2px rivet dots every 16px - the Today seam's motif read
+// sideways, for header rules (§1B) and the boot screen (§6). One dashed line
+// rather than forty objects. `x0` is the first dot; `x1` the last pixel.
+lv_obj_t *theme_rivet_row(lv_obj_t *parent, int x0, int x1, int y);

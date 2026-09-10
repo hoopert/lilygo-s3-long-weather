@@ -64,6 +64,13 @@ BacklightMode backlight_mode();
 uint8_t backlight_target_level();
 uint8_t backlight_current_level();
 
+// The solar anchors the curve is built on, as seconds since local midnight,
+// and how long a manual level has left before Auto takes over (0 in Auto).
+// Quick Settings turns these into "DIMS AT 7:18 PM" / "AUTO IN 3H 42M".
+int      backlight_sunrise_sod();
+int      backlight_sunset_sod();
+uint32_t backlight_manual_remaining_ms();
+
 // True while the auto-dimmer is aiming at the deep-night floor: Auto mode, the
 // small hours, and nobody in front of the panel. The Today screen swaps to its
 // Night Mode layout on this and back the moment it clears - a presence boost
