@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet">
+<style>
+body { margin: 0; background: #060809; font-family: 'Jost', sans-serif; }
+a, a:hover { color: #3FBFB0; }
+</style>
+</helmet>
+<div style="padding: 48px; display: flex; flex-direction: column; gap: 44px; width: max-content;">
+  <div style="color: #7C878E; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500;">Shipped firmware UI — recreated 1:1 from firmware/src/ui (640×180, night palette)</div>
+
+  <!-- ============ TODAY ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">SCREEN 1 · TODAY — screen_today.cpp</div>
+    <div data-screen-label="Today" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 24px; font-size: 72px; font-weight: 600; letter-spacing: -1px; line-height: 1; color: #E8DCC8;">72</div>
+      <div style="position: absolute; left: 102px; top: 36px; font-size: 30px; font-weight: 500; line-height: 1; color: #E8DCC8;">°</div>
+      <div style="position: absolute; left: 148px; top: 8px; font-family: 'Material Symbols Rounded'; font-size: 56px; line-height: 1; color: #E8DCC8;">partly_cloudy_day</div>
+      <div style="position: absolute; left: 10px; top: 100px; font-size: 20px; line-height: 1.1; color: #C9D1D6;">Partly Cloudy</div>
+      <div style="position: absolute; left: 10px; top: 124px; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #7C878E;">FEELS 71°&#8194;·&#8194;H 84° L 58°</div>
+      <div style="position: absolute; left: 10px; top: 146px; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #7C878E;">DENVER · 2:35 PM · 4 MIN AGO</div>
+      <div style="position: absolute; left: 207px; top: 12px; width: 1px; height: 148px; background: #2E353A;"></div>
+      <canvas ref="{{ ribbonRef }}" width="432" height="34" style="position: absolute; left: 208px; top: 84px;"></canvas>
+      <div style="position: absolute; left: 208px; top: 4px; width: 42px; height: 158px; border-radius: 5px; background: #171B1E;"></div>
+      <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+        <div style="position: absolute; top: 0; width: 43px; height: 180px; left: {{ h.x }}px;">
+          <div style="position: absolute; left: 0; top: 20px; width: 1px; height: 96px; background: #2E353A; opacity: {{ h.sepOpacity }};"></div>
+          <div style="position: absolute; left: 0; top: 6px; width: 43px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: {{ h.hourColor }};">{{ h.label }}</div>
+          <div style="position: absolute; left: 0; top: 22px; width: 43px; text-align: center; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: {{ h.tempColor }};">{{ h.icon }}</div>
+          <div style="position: absolute; left: 0; top: 44px; width: 43px; text-align: center; font-size: 24px; font-weight: 500; line-height: 1.1; color: {{ h.tempColor }};">{{ h.temp }}</div>
+          <div style="position: absolute; left: 0; top: 122px; width: 43px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #3FBFB0;">{{ h.precip }}</div>
+          <div style="position: absolute; left: 0; top: 140px; width: 43px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #6FA8C7;">{{ h.wind }}</div>
+        </div>
+      </sc-for>
+      <div style="position: absolute; left: 0; bottom: 3px; width: 640px; display: flex; justify-content: center; gap: 4px;">
+        <div style="width: 12px; height: 3px; border-radius: 2px; background: #3FBFB0;"></div>
+        <div style="width: 4px; height: 3px; border-radius: 2px; background: #2E353A;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SYSTEM ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">SCREEN 2 · SYSTEM — screen_system.cpp</div>
+    <div data-screen-label="System" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 6px; font-size: 30px; font-weight: 500; line-height: 1.1; color: #C9D1D6;">System</div>
+      <div style="position: absolute; left: 102px; top: 10px; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: #3FBFB0;">wifi</div>
+      <div style="position: absolute; left: 134px; top: 16px; width: 8px; height: 8px; border-radius: 4px; background: #2E353A;"></div>
+      <div style="position: absolute; right: 10px; top: 8px; width: 168px; height: 22px; border-radius: 11px; background: #171B1E; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">CHANGE WI-FI NETWORK</span>
+      </div>
+      <div style="position: absolute; left: 10px; top: 36px; width: 620px; height: 1px; background: #2E353A;"></div>
+      <sc-for list="{{ sysFields }}" as="f" hint-placeholder-count="8">
+        <div style="position: absolute; width: 147px; left: {{ f.x }}px; top: {{ f.y }}px;">
+          <div style="font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #7C878E;">{{ f.label }}</div>
+          <div style="font-size: 15px; font-weight: 500; line-height: 1.2; color: #C9D1D6; margin-top: 3px; white-space: nowrap; overflow: hidden;">{{ f.value }}</div>
+        </div>
+      </sc-for>
+      <div style="position: absolute; left: 0; bottom: 3px; width: 640px; display: flex; justify-content: center; gap: 4px;">
+        <div style="width: 4px; height: 3px; border-radius: 2px; background: #2E353A;"></div>
+        <div style="width: 12px; height: 3px; border-radius: 2px; background: #3FBFB0;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HOUR DETAIL ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">OVERLAY · HOUR DETAIL — overlays.cpp overlays_show_hour()</div>
+    <div data-screen-label="Hour Detail" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 12px; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: #E8DCC8;">partly_cloudy_day</div>
+      <div style="position: absolute; left: 38px; top: 6px; font-size: 30px; font-weight: 500; line-height: 1.1; color: #C9D1D6;">5:00 PM&#8194;·&#8194;Partly Cloudy</div>
+      <div style="position: absolute; right: 10px; top: 10px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">FORECAST</div>
+      <div style="position: absolute; left: 10px; top: 40px; width: 620px; height: 1px; background: #2E353A;"></div>
+      <sc-for list="{{ hourMetrics }}" as="m" hint-placeholder-count="8">
+        <div style="position: absolute; left: {{ m.x }}px; top: {{ m.y }}px;">
+          <div style="font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #7C878E;">{{ m.label }}</div>
+          <div style="font-size: 20px; line-height: 1.2; margin-top: 2px; color: {{ m.color }};">{{ m.value }}</div>
+        </div>
+      </sc-for>
+      <div style="position: absolute; right: 10px; bottom: 8px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #2E353A;">TAP TO CLOSE</div>
+    </div>
+  </div>
+
+  <!-- ============ NOW DETAIL ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">OVERLAY · NOW DETAIL — overlays.cpp overlays_show_now()</div>
+    <div data-screen-label="Now Detail" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 12px; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: #E8DCC8;">partly_cloudy_day</div>
+      <div style="position: absolute; left: 38px; top: 6px; font-size: 30px; font-weight: 500; line-height: 1.1; color: #C9D1D6;">Partly Cloudy</div>
+      <div style="position: absolute; right: 10px; top: 10px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">DENVER</div>
+      <div style="position: absolute; left: 10px; top: 40px; width: 620px; height: 1px; background: #2E353A;"></div>
+      <svg style="position: absolute; left: 16px; top: 48px;" width="96" height="52" viewBox="0 0 96 52">
+        <path d="M 3 49 A 45 45 0 0 1 93 49" fill="none" stroke="#2E353A" stroke-width="3" stroke-linecap="round"></path>
+        <path d="M 3 49 A 45 45 0 0 1 79.8 17.2" fill="none" stroke="#E8DCC8" stroke-width="3" stroke-linecap="round"></path>
+      </svg>
+      <div style="position: absolute; left: 56px; top: 74px; font-family: 'Material Symbols Rounded'; font-size: 16px; line-height: 1; color: #E8DCC8;">light_mode</div>
+      <div style="position: absolute; left: 10px; top: 102px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">6:42 AM</div>
+      <div style="position: absolute; left: 86px; top: 102px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">7:18 PM</div>
+      <sc-for list="{{ nowMetrics }}" as="m" hint-placeholder-count="6">
+        <div style="position: absolute; left: {{ m.x }}px; top: {{ m.y }}px;">
+          <div style="font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #7C878E;">{{ m.label }}</div>
+          <div style="font-size: 20px; line-height: 1.2; margin-top: 2px; color: {{ m.color }};">{{ m.value }}</div>
+        </div>
+      </sc-for>
+      <div style="position: absolute; right: 10px; bottom: 8px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #2E353A;">TAP TO CLOSE</div>
+    </div>
+  </div>
+
+  <!-- ============ QUICK SETTINGS ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">OVERLAY · QUICK SETTINGS — overlays.cpp overlays_show_quick_settings()</div>
+    <div data-screen-label="Quick Settings" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 12px; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: #E8DCC8;">settings</div>
+      <div style="position: absolute; left: 38px; top: 6px; font-size: 30px; font-weight: 500; line-height: 1.1; color: #C9D1D6;">Quick Settings</div>
+      <div style="position: absolute; left: 10px; top: 40px; width: 620px; height: 1px; background: #2E353A;"></div>
+      <div style="position: absolute; left: 10px; top: 50px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">BRIGHTNESS</div>
+      <div style="position: absolute; left: 106px; top: 50px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #C9D1D6;">78%</div>
+      <div style="position: absolute; left: 10px; top: 70px; width: 300px; height: 10px; border-radius: 5px; background: #2E353A;">
+        <div style="position: absolute; left: 0; top: 0; width: 78%; height: 10px; border-radius: 5px; background: #E8DCC8;"></div>
+        <div style="position: absolute; left: calc(78% - 10px); top: -5px; width: 20px; height: 20px; border-radius: 10px; background: #E8DCC8;"></div>
+      </div>
+      <div style="position: absolute; left: 326px; top: 64px; width: 78px; height: 24px; border-radius: 12px; background: #3FBFB0; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #0E1113;">AUTO</span>
+      </div>
+      <div style="position: absolute; left: 414px; top: 64px; width: 96px; height: 24px; border-radius: 12px; background: #171B1E; display: flex; align-items: center; justify-content: center; gap: 4px;">
+        <span style="font-family: 'Material Symbols Rounded'; font-size: 12px; line-height: 1; color: #C9D1D6;">refresh</span>
+        <span style="font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #C9D1D6;">REFRESH</span>
+      </div>
+      <div style="position: absolute; left: 518px; top: 70px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">4 MIN AGO</div>
+      <div style="position: absolute; left: 10px; top: 116px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">BASECAMP&#8194;·&#8194;192.168.1.87&#8194;·&#8194;-62 dBm&#8194;·&#8194;airstream-weather.local</div>
+      <div style="position: absolute; right: 10px; top: 114px; font-family: 'Material Symbols Rounded'; font-size: 16px; line-height: 1; color: #3FBFB0;">wifi</div>
+      <div style="position: absolute; right: 10px; bottom: 8px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #2E353A;">SWIPE UP TO CLOSE</div>
+    </div>
+  </div>
+
+  <!-- ============ BOOT ============ -->
+  <div>
+    <div style="color: #7C878E; font-size: 12px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 8px;">STATE · BEFORE FIRST FORECAST — screen_today.cpp update(), !d.valid</div>
+    <div data-screen-label="Boot" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+      <div style="position: absolute; left: 10px; top: 24px; font-size: 72px; font-weight: 600; letter-spacing: -1px; line-height: 1; color: #E8DCC8;">--</div>
+      <div style="position: absolute; left: 76px; top: 36px; font-size: 30px; font-weight: 500; line-height: 1; color: #E8DCC8;">°</div>
+      <div style="position: absolute; left: 10px; top: 100px; font-size: 20px; line-height: 1.1; color: #C9D1D6;">Setting up</div>
+      <div style="position: absolute; left: 10px; top: 124px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">JOIN WI-FI "AIRSTREAM-WEATHER" FROM YOUR PHONE</div>
+      <div style="position: absolute; left: 207px; top: 12px; width: 1px; height: 148px; background: #2E353A;"></div>
+      <div style="position: absolute; left: 0; bottom: 3px; width: 640px; display: flex; justify-content: center; gap: 4px;">
+        <div style="width: 12px; height: 3px; border-radius: 2px; background: #3FBFB0;"></div>
+        <div style="width: 4px; height: 3px; border-radius: 2px; background: #2E353A;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  tempColor(f) {
+    const mix = (a, b, t) => {
+      t = Math.max(0, Math.min(1, t));
+      const c = (h) => [(h >> 16) & 255, (h >> 8) & 255, h & 255];
+      const [ar, ag, ab] = c(a), [br, bg, bb] = c(b);
+      const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+      return `rgb(${r},${g},${bl})`;
+    };
+    const SKY = 0x6FA8C7, TURQ = 0x3FBFB0, OAT = 0xE8DCC8, SUN = 0xE2703A;
+    if (f <= 32) return mix(SKY, SKY, 0);
+    if (f <= 50) return mix(SKY, TURQ, (f - 32) / 18);
+    if (f <= 68) return mix(TURQ, OAT, (f - 50) / 18);
+    if (f <= 90) return mix(OAT, SUN, (f - 68) / 22);
+    return mix(SUN, SUN, 0);
+  }
+  hoursData() {
+    return [
+      { label: "NOW", icon: "sunny", t: 72, precip: "", wind: "NW 8" },
+      { label: "3PM", icon: "sunny", t: 74, precip: "", wind: "NW 9" },
+      { label: "4PM", icon: "partly_cloudy_day", t: 73, precip: "", wind: "N 12" },
+      { label: "5PM", icon: "partly_cloudy_day", t: 70, precip: "20%", wind: "N 14" },
+      { label: "6PM", icon: "cloud", t: 66, precip: "45%", wind: "NE 9" },
+      { label: "7PM", icon: "rainy", t: 62, precip: "60%", wind: "NE 7" },
+      { label: "8PM", icon: "rainy", t: 59, precip: "30%", wind: "E 5" },
+      { label: "9PM", icon: "cloud", t: 57, precip: "", wind: "" },
+      { label: "10PM", icon: "partly_cloudy_night", t: 55, precip: "", wind: "" },
+      { label: "11PM", icon: "nightlight", t: 54, precip: "", wind: "" }
+    ];
+  }
+  componentDidMount() { this.drawRibbon(); }
+  drawRibbon() {
+    const cv = this._ribbon;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, 432, 34);
+    const hours = this.hoursData();
+    const temps = hours.map(h => h.t);
+    let tmin = Math.min(...temps), tmax = Math.max(...temps);
+    let span = tmax - tmin;
+    if (span < 4) { const mid = (tmax + tmin) / 2; tmin = mid - 2; tmax = mid + 2; span = 4; }
+    const pad = 4, usable = 34 - pad * 2, colW = 43.2;
+    const yFor = t => pad + usable * (1 - (t - tmin) / span);
+    const img = ctx.createImageData(432, 34);
+    const put = (x, y, rgb, a) => {
+      if (x < 0 || x >= 432 || y < 0 || y >= 34) return;
+      const i = (y * 432 + x) * 4;
+      img.data[i] = rgb[0]; img.data[i + 1] = rgb[1]; img.data[i + 2] = rgb[2];
+      img.data[i + 3] = Math.max(img.data[i + 3], a);
+    };
+    const parse = (s) => s.match(/\d+/g).map(Number);
+    for (let x = 0; x < 432; x++) {
+      let fpos = (x - colW / 2) / colW;
+      fpos = Math.max(0, Math.min(9, fpos));
+      const i0 = Math.floor(fpos), i1 = Math.min(i0 + 1, 9), frac = fpos - i0;
+      const temp = temps[i0] + (temps[i1] - temps[i0]) * frac;
+      const lineY = Math.round(yFor(temp));
+      const rgb = parse(this.tempColor(temp));
+      for (let y = lineY; y < 34; y++) {
+        const f = 1 - (y - lineY) / (34 - lineY + 1);
+        const opa = Math.min(255, 70 * f * f);
+        if (opa < 6) continue;
+        put(x, y, rgb, opa);
+      }
+      put(x, lineY, rgb, 255);
+      put(x, lineY + 1, rgb, 255);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  renderVals() {
+    const hours = this.hoursData().map((h, i) => ({
+      x: 208 + i * 43,
+      sepOpacity: i > 0 ? 0.5 : 0,
+      label: h.label,
+      hourColor: h.label === "NOW" ? "#3FBFB0" : "#7C878E",
+      icon: h.icon,
+      temp: String(h.t),
+      tempColor: this.tempColor(h.t),
+      precip: h.precip,
+      wind: h.wind
+    }));
+    const col = i => 10 + (i % 4) * 155, row = i => 44 + Math.floor(i / 4) * 46;
+    const sysFields = ["NETWORK|Basecamp  -62 dBm", "IP ADDRESS|192.168.1.87", "UPDATE HOST|airstream-weather.local", "LOCATION|Denver  39.74, -104.99", "TOUCH / RAW XY|AXS15231B", "BRIGHTNESS|AUTO  78%", "MEMORY FREE|213K / 7842K PSRAM", "UPTIME / BUILD|3h 42m  ·  v1.0.0"]
+      .map((s, i) => { const [label, value] = s.split("|"); return { label, value, x: col(i), y: row(i) }; });
+    const hm = (i, label, value, color) => ({ label, value, color: color || "#C9D1D6", x: 10 + (i % 4) * 155, y: i < 4 ? 52 : 104 });
+    const hourMetrics = [
+      hm(0, "TEMPERATURE", "70°", this.tempColor(70)), hm(1, "FEELS LIKE", "68°"),
+      hm(2, "CHANCE OF RAIN", "20%", "#3FBFB0"), hm(3, "AMOUNT", "0.02\"", "#3FBFB0"),
+      hm(4, "WIND  N", "14 mph", "#6FA8C7"), hm(5, "GUSTING", "22 mph", "#6FA8C7"),
+      hm(6, "HUMIDITY", "38%"), hm(7, "DEW POINT", "44°")
+    ];
+    const nm = (i, label, value, color) => ({ label, value, color: color || "#C9D1D6", x: 140 + (i % 3) * 163, y: i < 3 ? 52 : 104 });
+    const nowMetrics = [
+      nm(0, "HIGH / LOW", "84° / 58°", "#E8DCC8"), nm(1, "HUMIDITY", "34%"), nm(2, "UV INDEX", "7.2", "#E2703A"),
+      nm(3, "GUSTS  W", "18 mph", "#6FA8C7"), nm(4, "PRESSURE", "1013 hPa"), nm(5, "RAIN TODAY", "60%", "#3FBFB0")
+    ];
+    return {
+      hours, sysFields, hourMetrics, nowMetrics,
+      ribbonRef: (el) => { this._ribbon = el; if (el) this.drawRibbon(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

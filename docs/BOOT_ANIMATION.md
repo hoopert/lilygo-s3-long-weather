@@ -13,7 +13,7 @@ aspirational. Where a number is a budget rather than a hard limit it says so.
 | Colour | **RGB565** - 5 bits red, 6 green, 5 blue. Smooth gradients band visibly (32 or 64 steps per channel, no dithering). Use flat colour, hard-edged shapes, or short gradients across a few tens of pixels. Antialiasing on edges and text is on and looks fine. |
 | Ground | The UI's background is `COL_GROUND` `#0E1113` (near-black, slightly cool). An animation that ends on that colour hands off to the Today screen with no cut. |
 | Palette | The theme: `#171B1E` surface, `#22282C` surface-hi, `#2E353A` rivet, `#C9D1D6` aluminium, `#7C878E` aluminium-dim, `#E8DCC8` oat, `#3FBFB0` turquoise, `#E2703A` sunset, `#6FA8C7` sky. Off-palette colour is allowed in the animation, but the last frame should live in the palette. |
-| Type | Jost (Futura lineage) in the cuts the firmware already carries: hero 64, title 28, hour 24, body 16, label 14, micro 12. Material Symbols Rounded icons at 56 / 20 / 16. **Any other size or face is a new bitmap font in flash** - fine, but it is a build step, not a design-time choice. |
+| Type | Jost (Futura lineage) in the cuts the firmware already carries: hero 72, title 30, hour 24, body 20, label 15, micro 12. Material Symbols Rounded icons at 56 / 20 / 16. **Any other size or face is a new bitmap font in flash** - fine, but it is a build step, not a design-time choice. |
 | Safe area | 10 px inset from every edge (`LAYOUT_SAFE`). The glass has a bezel; nothing critical in the outer 10 px. |
 
 ## Motion

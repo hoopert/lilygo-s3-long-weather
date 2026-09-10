@@ -5,7 +5,7 @@ chat transcript. Newest at the bottom. Remove an item when it ships.
 
 | # | Item | Notes |
 |---|---|---|
-| 1 | **Apply the Claude Design pass** | `design/tokens.json` is not in the repository yet. When it lands, apply it to `theme.h`, `theme.cpp` and the `k*` layout constants in `screen_today.cpp` per `docs/DESIGN_PROMPT.md`; type-size changes need a regenerated font cut (`tools/build_fonts.sh`). Blocked on the panel being legible, which it now is. |
+| 1 | **Apply the design pass** | The hand-off is in `design/` and the phased plan in `docs/DESIGN_PLAN.md`. Phases land as separate PRs; this row closes when Phase 8 does. |
 | 2 | `WebServer: request handler not found` on the console during setup | Phones probe `/generate_204`, `/hotspot-detect.html` and similar to detect a captive portal; WiFiManager redirects them but the Arduino server logs each miss at error level. Harmless. Silence by lowering `CORE_DEBUG_LEVEL` for that tag or by registering a catch-all handler. |
 | 3 | Brightness ladder skips a step when leaving Auto | Observed: Auto (255) → 110 on the first press, rather than 180. `backlight_cycle_step()` picks "next dimmer than current" and the comparison is probably strict against the Auto target. Make the first press out of Auto land on the first ladder rung below the current level, inclusive. |
 | 4 | Frame path is serial: rotate, then wait for the wire | `panel_push_frame()` rotates band N, transmits it, then rotates band N+1. Two chunk buffers and `spi_device_queue_trans` would overlap the two and roughly halve the ~25ms per frame. Worth doing only if an animation looks choppy. |
