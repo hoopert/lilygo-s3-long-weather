@@ -88,7 +88,7 @@
 #define WX_DEFAULT_LON   0.0f
 #define WX_DEFAULT_UNITS_IMPERIAL true   // fahrenheit + mph + inches
 
-#define WX_HOURLY_SLOTS       8          // hours shown on the Today strip
+#define WX_HOURLY_SLOTS       7          // hours shown on the Today strip, after a column of row labels
 #define WX_DAILY_DAYS         10         // days on the Forecast screen
 #define WX_HOURLY_FETCH       36         // hours parsed and kept in memory
 #define WX_PRESSURE_HISTORY   25         // hourly MSL pressure, -24h .. now, for the trend

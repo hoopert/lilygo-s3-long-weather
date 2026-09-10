@@ -90,6 +90,13 @@ void theme_init() {
     init_text_style(&style_micro, &font_micro, COL_ALUMINUM_DIM, 1);
 }
 
+lv_color_t theme_uv_color(float uv) {
+    if (isnan(uv)) return lv_color_hex(COL_ALUMINUM_DIM);
+    if (uv <= 2.0f) return lv_color_hex(COL_SKY);
+    if (uv >= 11.0f) return lv_color_hex(COL_UV_HIGH);
+    return mix_hex(COL_SKY, COL_UV_HIGH, (uv - 2.0f) / 9.0f);
+}
+
 lv_color_t theme_temp_color(float temp, bool imperial) {
     if (isnan(temp)) return lv_color_hex(COL_ALUMINUM_DIM);
 

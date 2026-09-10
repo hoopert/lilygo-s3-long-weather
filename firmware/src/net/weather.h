@@ -43,6 +43,7 @@ struct WxHour {
     float   gust;
     int16_t wind_dir;         // degrees the wind is coming FROM
     float   humidity;
+    float   uv;               // UV index for the hour
     float   pressure;         // hPa at mean sea level
     int16_t code;             // WMO code
     bool    is_day;
@@ -53,7 +54,11 @@ struct WxDay {
     float   temp_max;
     float   temp_min;
     int16_t precip_prob_max;  // percent
+    float   precip_sum;       // mm or inches, matching the unit setting
     float   wind_max;
+    float   uv_max;
+    time_t  sunrise;          // unix, UTC
+    time_t  sunset;
     int16_t code;             // WMO code for the day
 };
 

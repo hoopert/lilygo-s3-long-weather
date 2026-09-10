@@ -20,7 +20,7 @@ constexpr int kDayY    = 14;
 constexpr int kIconY   = 34;    // 32px glyph
 constexpr int kHighY   = 72;    // Title 30
 constexpr int kLowY    = 106;   // Body 20, dim
-constexpr int kRainY   = 136;   // Micro, turquoise, only when it matters
+constexpr int kRainY   = 136;   // Micro, turquoise: a droplet or a snowflake, then the chance
 constexpr int kSepY    = 24;
 constexpr int kSepH    = 128;
 
@@ -30,7 +30,8 @@ struct DayWidgets {
     lv_obj_t *icon;
     lv_obj_t *high;
     lv_obj_t *low;
-    lv_obj_t *rain;
+    lv_obj_t *rain_icon;   // droplet, or a snowflake when the day's precipitation is snow
+    lv_obj_t *rain;        // the chance, as a bare number; "-" when there is none
 };
 
 DayWidgets s_days[WX_DAILY_DAYS] = {};
@@ -79,9 +80,35 @@ lv_obj_t *create(lv_obj_t *parent) {
         w.icon = column_label(parent, &icons_md, COL_ALUMINUM, x, kIconY);
         w.high = column_label(parent, &font_title, COL_ALUMINUM, x, kHighY);
         w.low  = column_label(parent, &font_body, COL_ALUMINUM_DIM, x, kLowY);
-        w.rain = column_label(parent, &font_micro, COL_TURQUOISE, x, kRainY);
+        w.rain_icon = theme_label(parent, &icons_xs, COL_TURQUOISE, ICON_DROP);
+        lv_obj_set_pos(w.rain_icon, x, kRainY + 2);
+        w.rain = theme_label(parent, &font_micro, COL_TURQUOISE, "");
+        lv_obj_set_pos(w.rain, x, kRainY);
     }
     return parent;
+}
+
+// The chance of precipitation, with the kind of precipitation as its icon:
+// a snowflake when the day's condition is snow, a droplet otherwise. The
+// number carries no percent sign, and no chance at all is a dash. Icon and
+// number are centred in the column as a pair.
+void set_rain(DayWidgets &w, int i, const WxDay &day) {
+    char buf[8];
+    if (day.precip_prob_max <= 0) snprintf(buf, sizeof(buf), "-");
+    else                          snprintf(buf, sizeof(buf), "%d", day.precip_prob_max);
+    lv_label_set_text(w.rain, buf);
+
+    const WxIcon kind = wx_icon_for(day.code, true);
+    const bool snow = kind == WxIcon::Snow || kind == WxIcon::HeavySnow;
+    lv_label_set_text(w.rain_icon, snow ? ICON_SNOWFLAKE : ICON_DROP);
+    lv_obj_clear_flag(w.rain_icon, LV_OBJ_FLAG_HIDDEN);
+
+    const int text_w = int(lv_txt_get_width(buf, uint32_t(strlen(buf)), &font_micro, 0,
+                                            LV_TEXT_FLAG_NONE));
+    const int group_w = 11 + 3 + text_w;
+    const int start = column_x(i) + (LAYOUT_DAY_COL_W - group_w) / 2;
+    lv_obj_set_pos(w.rain_icon, start, kRainY + 2);
+    lv_obj_set_pos(w.rain, start + 14, kRainY);
 }
 
 void update(lv_obj_t *root) {
@@ -98,6 +125,7 @@ void update(lv_obj_t *root) {
             lv_label_set_text(w.high, "");
             lv_label_set_text(w.low, "");
             lv_label_set_text(w.rain, "");
+            lv_obj_add_flag(w.rain_icon, LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_style_bg_opa(w.bg, LV_OPA_TRANSP, 0);
             continue;
         }
@@ -126,12 +154,7 @@ void update(lv_obj_t *root) {
         fmt_temp_plain(day.temp_min, buf, sizeof(buf));
         lv_label_set_text(w.low, buf);
 
-        if (day.precip_prob_max >= 10) {
-            snprintf(buf, sizeof(buf), "%d%%", day.precip_prob_max);
-            lv_label_set_text(w.rain, buf);
-        } else {
-            lv_label_set_text(w.rain, "");
-        }
+        set_rain(w, i, day);
     }
 }
 

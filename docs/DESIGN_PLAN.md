@@ -241,9 +241,14 @@ Third flash, on the glass rather than the render: the ten-column strip
 with ribbon, rain bars and wind arrows was too crammed to read across a
 trailer. The ask was fewer hours, and the first cut over-read it and dropped the
 ribbon, rain and wind rows too; they are back. The strip is the design's,
-in eight 52px columns instead of ten. Night Mode is no longer a dimmer
-weather layout: it is a clock, `h:mm` in a 128px cut (`font_clock`) and
-nothing else, because a nightlight has one thing to say.
+in seven 52px columns instead of ten, behind a column of row labels, with a
+UV row (sky to purple, `theme_uv_color`) between the ribbon and the rain.
+The Now zone reads top to bottom - hero, feels-like, high and low told
+apart by colour, clock then town - with the condition's name under its
+glyph. Night Mode is no longer a dimmer weather layout: it is a clock,
+`h:mm` in a 128px cut (`font_clock`), with the condition glyph beside it
+(`icons_xl`, 84px) and the next sunrise on the other side, both at 69%,
+because a nightlight has one thing to say and two worth whispering.
 
 Quick Settings (§4) is no longer a sheet: the whole screen, with a nine-
 division brightness bar a fingertip tall that is tapped for a preset or
