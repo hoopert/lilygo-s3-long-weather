@@ -19,6 +19,7 @@ void overlays_init();
 
 void overlays_show_hour(int hour_index);
 void overlays_show_now();
+void overlays_show_pressure();   // from the pressure cell in Now Detail
 void overlays_show_quick_settings();
 
 void overlays_dismiss();

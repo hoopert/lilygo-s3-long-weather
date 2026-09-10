@@ -1,5 +1,6 @@
 #include "overlays.h"
 
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,12 +11,13 @@
 #include "icons.h"
 #include "net/net_manager.h"
 #include "net/weather.h"
+#include "pressure_logic.h"
 #include "screen_manager.h"
 #include "theme.h"
 
 namespace {
 
-enum class OverlayKind { None, Hour, Now, QuickSettings };
+enum class OverlayKind { None, Hour, Now, Pressure, QuickSettings };
 
 lv_obj_t   *s_root = nullptr;
 OverlayKind s_kind = OverlayKind::None;
@@ -126,9 +128,9 @@ void metric_c(lv_obj_t *parent, int x, int y, const char *label, const char *val
 }
 
 void header(lv_obj_t *parent, const char *icon_glyph, const char *title,
-            const char *subtitle) {
+            const char *subtitle, uint32_t icon_color = COL_OAT) {
     if (icon_glyph) {
-        lv_obj_t *ic = theme_label(parent, &icons_sm, COL_OAT, icon_glyph);
+        lv_obj_t *ic = theme_label(parent, &icons_sm, icon_color, icon_glyph);
         lv_obj_set_pos(ic, LAYOUT_SAFE, LAYOUT_SAFE + 2);
     }
     lv_obj_t *t = theme_label(parent, &font_title, COL_ALUMINUM, title);
@@ -147,10 +149,45 @@ void header(lv_obj_t *parent, const char *icon_glyph, const char *title,
     lv_obj_set_pos(rule, LAYOUT_SAFE, LAYOUT_SAFE + 30);
 }
 
-void hint(lv_obj_t *parent, const char *text) {
-    lv_obj_t *h = theme_label(parent, &font_micro, COL_RIVET, text);
-    lv_obj_set_style_text_letter_space(h, 1, 0);
-    lv_obj_align(h, LV_ALIGN_BOTTOM_RIGHT, -LAYOUT_SAFE, -LAYOUT_SAFE + 2);
+// A polyline that owns a copy of its points. lv_line keeps a pointer rather
+// than copying, so the copy lives in LVGL's heap and goes with the widget.
+lv_obj_t *polyline(lv_obj_t *parent, const lv_point_t *pts, uint16_t n, int width,
+                   uint32_t color) {
+    lv_point_t *copy = static_cast<lv_point_t *>(lv_mem_alloc(sizeof(lv_point_t) * n));
+    if (copy == nullptr) return nullptr;
+    memcpy(copy, pts, sizeof(lv_point_t) * n);
+    lv_obj_t *line = lv_line_create(parent);
+    lv_obj_remove_style_all(line);
+    lv_obj_clear_flag(line, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_line_set_points(line, copy, n);
+    lv_obj_set_style_line_width(line, width, 0);
+    lv_obj_set_style_line_color(line, lv_color_hex(color), 0);
+    lv_obj_set_style_line_rounded(line, true, 0);
+    lv_obj_add_event_cb(line, [](lv_event_t *e) {
+        lv_mem_free(lv_event_get_user_data(e));
+    }, LV_EVENT_DELETE, copy);
+    return line;
+}
+
+// The temperature in Celsius, whatever the panel displays in: the body-effect
+// rules are written in degrees C.
+float temp_c(const WxData &d) {
+    return d.imperial ? (d.temp - 32.0f) * 5.0f / 9.0f : d.temp;
+}
+
+// The colour the outlook word, the pressure glyph and the recent trend take:
+// sunset for a risk band or any HIGH body effect, aluminum otherwise.
+uint32_t outlook_color(const WxData &d) {
+    const PressureOutlook o = pressure_outlook(d.pressure_delta_3h);
+    const PressureRisks r = pressure_risks(d.pressure_delta_3h, d.pressure, d.humidity, temp_c(d));
+    return (o.risk || r.any_high) ? COL_SUNSET : COL_ALUMINUM;
+}
+
+void pressure_cell_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    if (swallow_click()) return;
+    backlight_note_activity();
+    overlays_show_pressure();
 }
 
 // --- quick settings callbacks ---------------------------------------------
@@ -218,7 +255,8 @@ void layer_gesture_cb(lv_event_t *e) {
 uint8_t overlays_swipes() {
     switch (s_kind) {
         case OverlayKind::Hour:
-        case OverlayKind::Now:           return UI_SWIPE_UP | UI_SWIPE_DOWN;
+        case OverlayKind::Now:
+        case OverlayKind::Pressure:      return UI_SWIPE_UP | UI_SWIPE_DOWN;
         case OverlayKind::QuickSettings: return UI_SWIPE_UP;
         case OverlayKind::None:          break;
     }
@@ -507,8 +545,83 @@ void overlays_show_hour(int hour_index) {
 }
 
 // ---------------------------------------------------------------------------
-// Now detail - current conditions, with the day's sun arc as the hero.
+// Now detail (design/SPEC.md §3) - current conditions, with the day's sun arc
+// as the hero and a spoken pressure trend that opens its own overlay.
 // ---------------------------------------------------------------------------
+namespace {
+
+constexpr int kArcSize    = 192;
+constexpr int kArcCX      = 120;    // arc centre; the baseline is the bottom edge
+constexpr int kArcCY      = 162;
+constexpr int kArcR       = 94;     // where the 3px track's centre line runs
+constexpr int kPuckSize   = 28;
+constexpr int kNowColX[3] = {248, 388, 512};
+constexpr int kNowRow1Y   = 54;
+constexpr int kNowRow2Y   = 112;
+constexpr int kSparkW     = 56;
+constexpr int kSparkH     = 14;
+constexpr int kSparkPts   = 7;      // the last six hours
+
+// Micro label, Title 30 value, optional 12px suffix - the Now Detail cell.
+void now_metric(lv_obj_t *parent, int x, int y, const char *label, const char *value,
+                uint32_t color, const char *suffix) {
+    panel_metric(parent, x, y, label, value, lv_color_hex(color), suffix);
+}
+
+// The pressure cell: reading subdued in the label, outlook word in Body 20,
+// and a 56x14 sparkline of the last six hours in the word's colour. The whole
+// cell is the tap target for Pressure Detail; no affordance chrome.
+void pressure_cell(lv_obj_t *parent, int x, int y, const WxData &d) {
+    const PressureOutlook o = pressure_outlook(d.pressure_delta_3h);
+    const uint32_t color = outlook_color(d);
+    char buf[32];
+
+    if (isnan(d.pressure)) snprintf(buf, sizeof(buf), "PRESSURE");
+    else snprintf(buf, sizeof(buf), "PRESSURE  %.0f", d.pressure);
+    lv_obj_t *l = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, buf);
+    lv_obj_set_style_text_letter_space(l, 1, 0);
+    lv_obj_set_pos(l, x, y);
+
+    lv_obj_t *w = theme_label(parent, &font_body, color, o.word);
+    lv_obj_set_pos(w, x, y + kPanelValueDY);
+
+    const int n = d.pressure_history_count < kSparkPts ? d.pressure_history_count : kSparkPts;
+    if (n >= 2) {
+        const float *h = d.pressure_history + (d.pressure_history_count - n);
+        float lo = INFINITY, hi = -INFINITY;
+        for (int i = 0; i < n; i++) {
+            if (isnan(h[i])) continue;
+            lo = fminf(lo, h[i]);
+            hi = fmaxf(hi, h[i]);
+        }
+        if (isfinite(lo) && isfinite(hi)) {
+            // A flat six hours is a flat line through the middle, not noise
+            // stretched to fill 14px.
+            float span = hi - lo;
+            if (span < 2.0f) { const float mid = (hi + lo) * 0.5f; lo = mid - 1.0f; span = 2.0f; }
+            lv_point_t pts[kSparkPts];
+            const int y0 = y + kPanelValueDY + 24;
+            float last = h[0];
+            for (int i = 0; i < n; i++) {
+                if (!isnan(h[i])) last = h[i];
+                pts[i].x = lv_coord_t(x + (kSparkW * i) / (n - 1));
+                pts[i].y = lv_coord_t(y0 + 1 + int((kSparkH - 2) * (1.0f - (last - lo) / span)));
+            }
+            polyline(parent, pts, uint16_t(n), 2, color);
+        }
+    }
+
+    lv_obj_t *hit = lv_obj_create(parent);
+    lv_obj_remove_style_all(hit);
+    lv_obj_set_pos(hit, x - 6, y - 6);
+    lv_obj_set_size(hit, 124, 66);
+    lv_obj_add_flag(hit, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(hit, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(hit, pressure_cell_cb, LV_EVENT_CLICKED, nullptr);
+}
+
+}  // namespace
+
 void overlays_show_now() {
     WxData d;
     weather_snapshot(d);
@@ -517,17 +630,20 @@ void overlays_show_now() {
     lv_obj_t *root = make_backdrop();
     s_kind = OverlayKind::Now;
 
-    header(root, icon_for(wx_icon_for(d.code, d.is_day)),
-           wx_condition_text(d.code), d.location);
+    char clock[16], sub[72], buf[32];
+    fmt_clock(time(nullptr), d.utc_offset, clock, sizeof(clock));
+    snprintf(sub, sizeof(sub), "%s  ·  %s", d.location[0] ? d.location : "HERE", clock);
+    for (char *c = sub; *c; c++) *c = char(toupper(static_cast<unsigned char>(*c)));
+    header(root, icon_for(wx_icon_for(d.code, d.is_day)), wx_condition_text(d.code), sub);
 
-    // The sun arc. A 180-degree arc from sunrise to sunset with a filled dot at
-    // the current position says "where are we in the day" faster than two
-    // timestamps do, and it is the single most Airstream-looking element on the
-    // panel - an instrument, not a readout.
-    const int arc_size = 96;
+    // The sun arc. A 180-degree arc from sunrise to sunset with the sun itself
+    // riding it says "where are we in the day" faster than two timestamps do,
+    // and it is the single most Airstream-looking element on the panel - an
+    // instrument, not a readout. The lower half of the circle is below the
+    // screen; only the daylight half shows.
     lv_obj_t *arc = lv_arc_create(root);
-    lv_obj_set_size(arc, arc_size, arc_size);
-    lv_obj_set_pos(arc, LAYOUT_SAFE + 6, 48);
+    lv_obj_set_size(arc, kArcSize, kArcSize);
+    lv_obj_set_pos(arc, kArcCX - kArcSize / 2, kArcCY - kArcSize / 2);
     lv_arc_set_rotation(arc, 180);
     lv_arc_set_bg_angles(arc, 0, 180);
     lv_arc_set_range(arc, 0, 1000);
@@ -538,53 +654,202 @@ void overlays_show_now() {
     lv_obj_set_style_arc_width(arc, 3, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(arc, lv_color_hex(COL_OAT), LV_PART_INDICATOR);
 
-    int32_t progress = 0;
+    float f = 0.0f;
     if (d.sunrise > 0 && d.sunset > d.sunrise) {
         const time_t now = time(nullptr);
-        const float f = float(now - d.sunrise) / float(d.sunset - d.sunrise);
-        progress = int32_t(fmaxf(0.0f, fminf(1.0f, f)) * 1000.0f);
+        f = fmaxf(0.0f, fminf(1.0f, float(now - d.sunrise) / float(d.sunset - d.sunrise)));
     }
-    lv_arc_set_value(arc, progress);
+    lv_arc_set_value(arc, int32_t(f * 1000.0f));
+
+    // The sun: a 20px glyph on a 28px ground puck, so the track passes behind
+    // it. Angle 180 is the left end (sunrise), 270 the top, 360 the right.
+    const float a = (180.0f + 180.0f * f) * float(M_PI) / 180.0f;
+    const int sx = kArcCX + int(lroundf(kArcR * cosf(a)));
+    const int sy = kArcCY + int(lroundf(kArcR * sinf(a)));
+    lv_obj_t *puck = theme_decor(root);
+    lv_obj_set_size(puck, kPuckSize, kPuckSize);
+    lv_obj_set_style_radius(puck, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(puck, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(puck, lv_color_hex(COL_GROUND), 0);
+    lv_obj_set_pos(puck, sx - kPuckSize / 2, sy - kPuckSize / 2);
+    lv_obj_t *sun = theme_label(puck, &icons_sm, COL_OAT, ICON_SUN);
+    lv_obj_center(sun);
+
+    lv_obj_t *dl = theme_label(root, &font_label, COL_OAT, d.is_day ? "DAYLIGHT" : "NIGHT");
+    lv_obj_set_style_text_letter_space(dl, 1, 0);
+    lv_obj_set_width(dl, 120);
+    lv_obj_set_style_text_align(dl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_pos(dl, kArcCX - 60, 108);
 
     char rise[16], set[16];
     fmt_clock(d.sunrise, d.utc_offset, rise, sizeof(rise));
     fmt_clock(d.sunset, d.utc_offset, set, sizeof(set));
-
     lv_obj_t *r = theme_label(root, &font_micro, COL_ALUMINUM_DIM, rise);
-    lv_obj_set_pos(r, LAYOUT_SAFE, 48 + arc_size / 2 + 6);
-    lv_obj_t *s = theme_label(root, &font_micro, COL_ALUMINUM_DIM, set);
-    lv_obj_set_pos(s, LAYOUT_SAFE + arc_size - 20, 48 + arc_size / 2 + 6);
+    lv_obj_set_style_text_letter_space(r, 1, 0);
+    lv_obj_set_pos(r, 30, 148);
+    lv_obj_t *st = theme_label(root, &font_micro, COL_ALUMINUM_DIM, set);
+    lv_obj_set_style_text_letter_space(st, 1, 0);
+    lv_obj_set_pos(st, 158, 148);
 
-    lv_obj_t *sun_icon = theme_label(root, &icons_ui, COL_OAT, ICON_SUN);
-    lv_obj_set_pos(sun_icon, LAYOUT_SAFE + arc_size / 2 - 2, 48 + arc_size / 2 - 22);
+    // --- metrics, 3 x 2 -------------------------------------------------------
+    snprintf(buf, sizeof(buf), "%d° / %d°", int(lroundf(d.temp_max)), int(lroundf(d.temp_min)));
+    now_metric(root, kNowColX[0], kNowRow1Y, "HIGH / LOW", buf, COL_OAT, nullptr);
 
-    // Metrics fill the remaining width to the right of the arc.
-    const int gx = LAYOUT_SAFE + arc_size + 34;
-    const int col_w = (UI_WIDTH - gx - LAYOUT_SAFE) / 3;
-    const int row1 = 52, row2 = 104;
+    snprintf(buf, sizeof(buf), "%.0f%%", d.humidity);
+    now_metric(root, kNowColX[1], kNowRow1Y, "HUMIDITY", buf, COL_ALUMINUM, nullptr);
 
-    char v[6][24];
-    snprintf(v[0], sizeof(v[0]), "%d° / %d°",
-             int(lroundf(d.temp_max)), int(lroundf(d.temp_min)));
-    snprintf(v[1], sizeof(v[1]), "%.0f%%", d.humidity);
-    snprintf(v[2], sizeof(v[2]), "%.1f", d.uv_index);
-    snprintf(v[3], sizeof(v[3]), "%.0f %s", d.gust, d.imperial ? "mph" : "km/h");
-    snprintf(v[4], sizeof(v[4]), "%.0f hPa", d.pressure);
-    snprintf(v[5], sizeof(v[5]), "%d%%", d.precip_prob_max);
+    snprintf(buf, sizeof(buf), "%.1f", d.uv_index);
+    now_metric(root, kNowColX[2], kNowRow1Y, "UV INDEX", buf,
+               d.uv_index >= 6.0f ? COL_SUNSET : COL_ALUMINUM, nullptr);
 
-    metric(root, gx + col_w * 0, row1, "HIGH / LOW", v[0], COL_OAT);
-    metric(root, gx + col_w * 1, row1, "HUMIDITY", v[1]);
-    metric(root, gx + col_w * 2, row1, "UV INDEX", v[2],
-           d.uv_index >= 6.0f ? COL_SUNSET : COL_ALUMINUM);
+    char label[24];
+    snprintf(label, sizeof(label), "GUSTS  %s", wx_cardinal(d.wind_dir));
+    snprintf(buf, sizeof(buf), "%.0f", d.gust);
+    now_metric(root, kNowColX[0], kNowRow2Y, label, buf, COL_SKY, d.imperial ? "MPH" : "KM/H");
 
-    char gust_label[24];
-    snprintf(gust_label, sizeof(gust_label), "GUSTS  %s", wx_cardinal(d.wind_dir));
-    metric(root, gx + col_w * 0, row2, gust_label, v[3], COL_SKY);
-    metric(root, gx + col_w * 1, row2, "PRESSURE", v[4]);
-    metric(root, gx + col_w * 2, row2, "RAIN TODAY", v[5],
-           d.precip_prob_max >= 10 ? COL_TURQUOISE : COL_ALUMINUM_DIM);
+    pressure_cell(root, kNowColX[1], kNowRow2Y, d);
 
-    hint(root, "TAP TO CLOSE");
+    // Open-Meteo reports visibility in metres whatever the unit setting.
+    const float vis = d.imperial ? d.visibility / 1609.34f : d.visibility / 1000.0f;
+    snprintf(buf, sizeof(buf), vis >= 10.0f ? "%.0f" : "%.1f", vis);
+    now_metric(root, kNowColX[2], kNowRow2Y, "VISIBILITY", buf, COL_ALUMINUM,
+               d.imperial ? "MI" : "KM");
+}
+
+// ---------------------------------------------------------------------------
+// Pressure detail (design/SPEC.md §3B) - the outlook in words, the last 24
+// hours as a graph, and what the trend means for a body.
+// ---------------------------------------------------------------------------
+namespace {
+
+constexpr int kPxSeam1     = 160;
+constexpr int kPxSeam2     = 432;
+constexpr int kPxSeamY     = 52;
+constexpr int kPxSeamH     = 108;
+constexpr int kPxPlotX     = 180;
+constexpr int kPxPlotY     = 52;
+constexpr int kPxPlotW     = 240;
+constexpr int kPxPlotH     = 90;
+constexpr float kPxTop     = 1022.0f;   // hPa at the plot's top edge
+constexpr float kPxBottom  = 1006.0f;   // and its bottom: 90px / 16 hPa
+constexpr int kPxBodyX     = 448;
+constexpr int kPxBodyLblX  = 472;
+constexpr int kPxBodyRight = 630;
+constexpr int kPxRowY[4]   = {64, 89, 114, 139};
+
+int plot_y(float hpa) {
+    if (isnan(hpa)) hpa = kPxBottom;
+    float y = kPxPlotY + (kPxTop - hpa) * (float(kPxPlotH) / (kPxTop - kPxBottom));
+    if (y < kPxPlotY) y = kPxPlotY;
+    if (y > kPxPlotY + kPxPlotH) y = kPxPlotY + kPxPlotH;
+    return int(lroundf(y));
+}
+
+void body_row(lv_obj_t *parent, int y, const char *glyph, const char *label, RiskLevel level) {
+    lv_obj_t *g = theme_label(parent, &icons_ui, COL_ALUMINUM_DIM, glyph);
+    lv_obj_set_pos(g, kPxBodyX, y);
+
+    lv_obj_t *l = theme_label(parent, &font_micro, COL_ALUMINUM, label);
+    lv_obj_set_style_text_letter_space(l, 1, 0);
+    lv_obj_set_pos(l, kPxBodyLblX, y + 2);
+
+    uint32_t color = COL_TURQUOISE;
+    if (level == RiskLevel::Medium) color = COL_OAT;
+    if (level == RiskLevel::High)   color = COL_SUNSET;
+
+    lv_obj_t *w = theme_label(parent, &font_micro, color, risk_word(level));
+    lv_obj_set_style_text_letter_space(w, 1, 0);
+    lv_obj_align(w, LV_ALIGN_TOP_RIGHT, kPxBodyRight - UI_WIDTH, y + 2);
+
+    lv_obj_t *dot = theme_decor(parent);
+    lv_obj_set_size(dot, 7, 7);
+    lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(dot, lv_color_hex(color), 0);
+    lv_obj_align_to(dot, w, LV_ALIGN_OUT_LEFT_MID, -6, 0);
+}
+
+}  // namespace
+
+void overlays_show_pressure() {
+    WxData d;
+    weather_snapshot(d);
+    if (!d.valid) return;
+
+    lv_obj_t *root = make_backdrop();
+    s_kind = OverlayKind::Pressure;
+
+    const PressureOutlook o = pressure_outlook(d.pressure_delta_3h);
+    const PressureRisks r = pressure_risks(d.pressure_delta_3h, d.pressure, d.humidity, temp_c(d));
+    const uint32_t color = outlook_color(d);
+    char buf[48];
+
+    if (isnan(d.pressure_delta_3h)) {
+        snprintf(buf, sizeof(buf), "%.0f HPA", d.pressure);
+    } else {
+        snprintf(buf, sizeof(buf), "%.0f HPA  ·  %+.1f IN 3H", d.pressure, d.pressure_delta_3h);
+    }
+    header(root, ICON_SPEED, "Pressure", buf, color);
+
+    for (int x : {kPxSeam1, kPxSeam2}) {
+        lv_obj_t *seam = theme_decor(root);
+        lv_obj_add_style(seam, &style_hairline, 0);
+        lv_obj_set_size(seam, 1, kPxSeamH);
+        lv_obj_set_pos(seam, x, kPxSeamY);
+    }
+
+    // --- outlook ------------------------------------------------------------
+    lv_obj_t *word = theme_label(root, &font_title, color, o.word);
+    lv_obj_set_width(word, kPxSeam1 - LAYOUT_SAFE - 4);
+    lv_label_set_long_mode(word, LV_LABEL_LONG_CLIP);
+    lv_obj_set_pos(word, LAYOUT_SAFE, 54);
+    lv_obj_t *cap = theme_label(root, &font_micro, COL_ALUMINUM_DIM, o.caption);
+    lv_obj_set_style_text_letter_space(cap, 1, 0);
+    lv_obj_set_pos(cap, LAYOUT_SAFE, 92);
+
+    // --- 24h graph ----------------------------------------------------------
+    for (float g : {1020.0f, 1015.0f, 1010.0f}) {
+        lv_obj_t *grid = theme_decor(root);
+        lv_obj_add_style(grid, &style_hairline, 0);
+        lv_obj_set_size(grid, kPxPlotW, 1);
+        lv_obj_set_pos(grid, kPxPlotX, plot_y(g));
+        snprintf(buf, sizeof(buf), "%.0f", g);
+        lv_obj_t *gl = theme_label(root, &font_micro, COL_NIGHT_DIM, buf);
+        lv_obj_set_pos(gl, kPxPlotX + 3, plot_y(g) - 13);
+    }
+    struct { const char *text; int x; uint32_t color; } ticks[3] = {
+        {"-24H", kPxPlotX, COL_ALUMINUM_DIM}, {"-12H", 288, COL_ALUMINUM_DIM}, {"NOW", 392, COL_TURQUOISE}};
+    for (auto &t : ticks) {
+        lv_obj_t *tl = theme_label(root, &font_micro, t.color, t.text);
+        lv_obj_set_style_text_letter_space(tl, 1, 0);
+        lv_obj_set_pos(tl, t.x, 150);
+    }
+
+    const int n = d.pressure_history_count;
+    if (n >= 2) {
+        // Right-aligned on NOW, one point per hour at 10px, so a short history
+        // still ends at the right edge. The last three hours take the outlook
+        // colour; the joint point belongs to both segments.
+        lv_point_t pts[WX_PRESSURE_HISTORY];
+        float last = NAN;
+        for (int i = 0; i < n; i++) {
+            if (!isnan(d.pressure_history[i])) last = d.pressure_history[i];
+            pts[i].x = lv_coord_t(kPxPlotX + kPxPlotW - (n - 1 - i) * 10);
+            pts[i].y = lv_coord_t(plot_y(last));
+        }
+        const int split = n > 4 ? n - 4 : 0;
+        if (split > 0) polyline(root, pts, uint16_t(split + 1), 2, COL_ALUMINUM_DIM);
+        polyline(root, pts + split, uint16_t(n - split), 2, color);
+    }
+
+    // --- body effects -------------------------------------------------------
+    lv_obj_t *eye = theme_label(root, &font_micro, COL_ALUMINUM_DIM, "BODY EFFECTS");
+    lv_obj_set_style_text_letter_space(eye, 1, 0);
+    lv_obj_set_pos(eye, kPxBodyX, 48);
+    body_row(root, kPxRowY[0], ICON_RHEUMATOLOGY, "JOINT PAIN",   r.joint_pain);
+    body_row(root, kPxRowY[1], ICON_NEUROLOGY,    "MIGRAINE",     r.migraine);
+    body_row(root, kPxRowY[2], ICON_HEARING,      "SINUS & EARS", r.sinus_ears);
+    body_row(root, kPxRowY[3], ICON_CARDIOLOGY,   "HEART STRAIN", r.heart_strain);
 }
 
 // ---------------------------------------------------------------------------

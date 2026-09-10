@@ -112,7 +112,14 @@ Pure data, no UI. Unblocks Phases 4 and 5.
 - **Done when:** the console prints the 3h delta and outlook word after each
   fetch; the host check passes in CI.
 
-### Phase 4 - Now Detail (§3) and Pressure Detail (§3B)
+### Phase 4 - Now Detail (§3) and Pressure Detail (§3B) - merged
+
+Implementation notes: the sun is a 20px `icons_sm` glyph (the design's
+22px has no cut) on a 28px puck positioned by angle; the arc object is the
+full 192px circle with its lower half off-screen. Visibility comes from
+Open-Meteo in metres and is shown in MI or KM. `DAYLIGHT` reads `NIGHT`
+when `is_day` is false. The 24h graph right-aligns on NOW at 10px per hour
+so a short history still ends at the right edge.
 
 - Now Detail: 192px arc with the sun glyph riding it on a 28px ground puck
   (positioned by angle, not an image knob); `DAYLIGHT` and the two times
