@@ -30,8 +30,8 @@ a, a:hover { color: #3FBFB0; }
       <div style="position: relative; height: 16px; width: 640px; color: #E2703A; font-size: 10px; letter-spacing: 0.5px;">
         <span style="position: absolute; left: 10px;">10</span>
         <span style="position: absolute; left: 196px;">SEAM 208</span>
-        <span style="position: absolute; left: 251px;">251</span>
-        <span style="position: absolute; left: 330px;">43px × 10 COLS</span>
+        <span style="position: absolute; left: 251px;">252</span>
+        <span style="position: absolute; left: 330px;">42px × 10 COLS</span>
         <span style="position: absolute; right: 0;">630 SAFE</span>
       </div>
       <div data-screen-label="01 Today" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
@@ -46,17 +46,17 @@ a, a:hover { color: #3FBFB0; }
           <div style="position: absolute; left: 206px; width: 2px; height: 2px; border-radius: 1px; background: #2E353A; top: {{ d.y }}px;"></div>
         </sc-for>
         <div style="position: absolute; left: 207px; top: 12px; width: 1px; height: 148px; background: #2E353A;"></div>
-        <canvas ref="{{ ribbonRef }}" width="432" height="30" style="position: absolute; left: 208px; top: 78px;"></canvas>
-        <div style="position: absolute; left: 208px; top: 4px; width: 42px; height: 158px; border-radius: 5px; background: #171B1E;"></div>
+        <canvas ref="{{ ribbonRef }}" width="420" height="30" style="position: absolute; left: 210px; top: 78px;"></canvas>
+        <div style="position: absolute; left: 210px; top: 4px; width: 41px; height: 158px; border-radius: 5px; background: #171B1E;"></div>
         <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
-          <div style="position: absolute; top: 0; width: 43px; height: 180px; left: {{ h.x }}px;">
+          <div style="position: absolute; top: 0; width: 42px; height: 180px; left: {{ h.x }}px;">
             <div style="position: absolute; left: 0; top: 20px; width: 1px; height: 92px; background: #2E353A; opacity: {{ h.sepOpacity }};"></div>
-            <div style="position: absolute; left: 0; top: 6px; width: 43px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: {{ h.hourColor }};">{{ h.label }}</div>
-            <div style="position: absolute; left: 0; top: 22px; width: 43px; text-align: center; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: {{ h.tempColor }};">{{ h.icon }}</div>
-            <div style="position: absolute; left: 0; top: 42px; width: 43px; text-align: center; font-size: 30px; font-weight: 500; line-height: 1.1; color: {{ h.tempColor }};">{{ h.temp }}</div>
-            <div style="position: absolute; left: 0; top: 112px; width: 43px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #3FBFB0;">{{ h.precip }}</div>
+            <div style="position: absolute; left: 0; top: 6px; width: 42px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: {{ h.hourColor }};">{{ h.label }}</div>
+            <div style="position: absolute; left: 0; top: 22px; width: 42px; text-align: center; font-family: 'Material Symbols Rounded'; font-size: 20px; line-height: 1; color: {{ h.tempColor }};">{{ h.icon }}</div>
+            <div style="position: absolute; left: 0; top: 42px; width: 42px; text-align: center; line-height: 1.1; font-weight: 500; color: {{ h.tempColor }}; font-size: {{ h.tempSize }}px;">{{ h.temp }}</div>
+            <div style="position: absolute; left: 0; top: 112px; width: 42px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1.2; color: #3FBFB0;">{{ h.precip }}</div>
             <div style="position: absolute; left: 20px; width: 2px; background: #3FBFB0; bottom: 28px; height: {{ h.barH }}px;"></div>
-            <div style="position: absolute; left: 0; top: 156px; width: 43px; display: flex; align-items: center; justify-content: center; gap: 2px;">
+            <div style="position: absolute; left: 0; top: 156px; width: 42px; display: flex; align-items: center; justify-content: center; gap: 2px;">
               <span style="font-family: 'Material Symbols Rounded'; font-size: 11px; line-height: 1; color: #6FA8C7; display: inline-block; transform: rotate({{ h.windRot }}deg); opacity: {{ h.windArrowOpacity }};">navigation</span>
               <span style="font-size: 12px; font-weight: 500; letter-spacing: 1px; line-height: 1; color: #6FA8C7;">{{ h.windSpeed }}</span>
             </div>
@@ -73,10 +73,66 @@ a, a:hover { color: #3FBFB0; }
         <div style="color: #E2703A; letter-spacing: 1.5px; font-weight: 500;">MEASUREMENTS</div>
         <div>Zone split x=208 · seam 1px rivet, y 12–160, 2px rivet dots every 16px at x=206</div>
         <div>NOW zone: hero (10, 22) 72px oat · ° 30px at hero-right +2, cap-aligned +12 · F suffix 15px dim · icon 56px (146, 10) · condition 20px (10, 98) · meta 12px (10, 124) · place 12px (10, 146)</div>
-        <div>Columns 43px: hour y6 · glyph 20px y22 · temp 30px y42 (ramp color, no °) · ribbon y78 h30 · precip% y112, ≥10% only · bar 2px wide, bottom y152, h = prob × 0.24 (0–24px) · wind y156: navigation glyph 11px rotated to (dir+180)°, hidden &lt;3 mph, + speed 12px</div>
+        <div style="color: #E2703A;">Strip geometry: 10 columns of 42px from x210, ending at 630 — the 10px safe line. (208 + i×43 ran to 638, past the masked corner.) Ribbon and NOW slab follow: 420px wide from x210</div>
+        <div style="color: #E2703A;">Three-digit rule: the 30px Title cut measures ~52px at "100" and will not fit 42px. Hour temps render at 30px for 1–2 digits and fall back to the 24px cut at 3 digits (≥100° or ≤−10°) — both cuts ship</div>
+        <div>Columns 42px: hour y6 · glyph 20px y22 · temp 30/24px y42 (ramp color, no °) · ribbon y78 h30 · precip% y112, ≥10% only · bar 2px wide, bottom y152, h = prob × 0.24 (0–24px) · wind y156: navigation glyph 11px rotated to (dir+180)°, hidden &lt;3 mph, + speed 12px</div>
         <div>NOW column: surface bg (x208, y4, 42×158, r5) · label turquoise</div>
         <div>Indicator: 12×3 bar turquoise + 4×3 dots rivet, gap 4, bottom y174</div>
         <div style="color: #3FBFB0;">Changed vs shipped: hour temps 24 → 30px · wind cardinal → arrow+speed · precip bar added · seam rivet dots added · column rhythm re-spaced</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- ================= 1B · SYSTEM ================= -->
+  <div style="display: flex; gap: 28px; align-items: flex-start;">
+    <div>
+      <div style="color: #C9D1D6; font-size: 13px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 6px;">1B · SYSTEM — second page, swipe left from Today</div>
+      <div data-screen-label="01B System" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
+        <div style="position: absolute; left: 10px; top: 6px; line-height: 1; font-size: 30px; font-weight: 500; color: #C9D1D6;">System</div>
+        <div style="position: absolute; left: 124px; top: 14px; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+          <span style="width: 7px; height: 7px; border-radius: 4px; background: #3FBFB0;"></span>
+          <span style="line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">HEAP 213K</span>
+          <span style="line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #4C555B;">·</span>
+          <span style="line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">PSRAM 7842K</span>
+        </div>
+        <div style="position: absolute; right: 10px; top: 8px; width: 168px; height: 24px; border-radius: 12px; background: #22282C; display: flex; align-items: center; justify-content: center; gap: 5px;">
+          <span style="font-family: 'Material Symbols Rounded'; font-size: 13px; line-height: 1; color: #C9D1D6;">wifi</span>
+          <span style="line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #C9D1D6;">CHANGE NETWORK</span>
+        </div>
+        <div style="position: absolute; left: 10px; top: 40px; width: 620px; height: 1px; background: #2E353A;"></div>
+        <sc-for list="{{ sysSeamDots }}" as="d" hint-placeholder-count="39">
+          <div style="position: absolute; top: 44px; width: 2px; height: 2px; border-radius: 1px; background: #2E353A; left: {{ d.x }}px;"></div>
+        </sc-for>
+        <div style="position: absolute; left: 219px; top: 56px; width: 1px; height: 78px; background: #2E353A;"></div>
+        <div style="position: absolute; left: 429px; top: 56px; width: 1px; height: 78px; background: #2E353A;"></div>
+        <sc-for list="{{ sysGrid }}" as="f" hint-placeholder-count="6">
+          <div style="position: absolute; left: {{ f.x }}px; top: {{ f.y }}px; width: 200px;">
+            <div style="line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">{{ f.label }}</div>
+            <div style="line-height: 1; margin-top: 6px; color: #C9D1D6; white-space: nowrap; font-size: {{ f.size }}px; font-weight: {{ f.weight }};">{{ f.value }}<span style="font-size: 12px; font-weight: 500; letter-spacing: 0.5px; color: #7C878E; margin-left: 5px;">{{ f.suffix }}</span></div>
+          </div>
+        </sc-for>
+        <div style="position: absolute; left: 116px; top: 62px; display: flex; align-items: flex-end; gap: 2px;">
+          <div style="width: 4px; height: 5px; border-radius: 1px; background: #3FBFB0;"></div>
+          <div style="width: 4px; height: 8px; border-radius: 1px; background: #3FBFB0;"></div>
+          <div style="width: 4px; height: 11px; border-radius: 1px; background: #3FBFB0;"></div>
+          <div style="width: 4px; height: 14px; border-radius: 1px; background: #2E353A;"></div>
+        </div>
+        <div style="position: absolute; left: 10px; top: 148px; line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #4C555B;">UP 3H 42M&#8194;·&#8194;v1.0.0&#8194;·&#8194;BUILD 2026-09-09</div>
+        <div style="position: absolute; left: 0; bottom: 3px; width: 640px; display: flex; justify-content: center; gap: 4px;">
+          <div style="width: 4px; height: 3px; border-radius: 2px; background: #2E353A;"></div>
+          <div style="width: 12px; height: 3px; border-radius: 2px; background: #3FBFB0;"></div>
+        </div>
+      </div>
+    </div>
+    <sc-if value="{{ showAnn }}" hint-placeholder-val="{{ true }}">
+      <div style="width: 330px; color: #7C878E; font-size: 12px; line-height: 1.7; padding-top: 22px;">
+        <div style="color: #E2703A; letter-spacing: 1.5px; font-weight: 500;">MEASUREMENTS</div>
+        <div>Top bar: title Title 30 (10,6) · memory moves here — 7px status dot + HEAP / PSRAM micro at x124 y14, right after the title; dot turquoise, sunset when free heap &lt; 40K · CHANGE NETWORK pill 168×24 r12 surface-hi, right 10 y8 (44px hit target extends to the bar edges)</div>
+        <div>Header rule 620×1 y40 + rivet dots 2px every 16px at y44 — the seam motif read horizontally</div>
+        <div>Grid: 3 equal columns 200px at x10 / x220 / x430, vertical rivet hairlines at x219 and x429 (y56–134) · rows y56 and y104 · Micro label + value 6px below · human values Body 20 aluminum, machine strings Label 15 (host, coords, controller) so nothing wraps at 200px — the four 147px columns in the shipped screen are what forced the wrapping</div>
+        <div>Wi-Fi signal bars beside the network value at (116,62): 4 bars 4px wide, heights 5/8/11/14, lit turquoise per 25% RSSI</div>
+        <div>Uptime + build leave the grid for a footer line, micro #4C555B (10,148) · page indicator unchanged, second page active</div>
+        <div>Brightness is removed — it lives in Quick Settings, one swipe away</div>
       </div>
     </sc-if>
   </div>
@@ -279,9 +335,9 @@ a, a:hover { color: #3FBFB0; }
         <div style="position: absolute; left: 10px; top: 146px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #4C555B;">2:14 AM</div>
         <div style="position: absolute; left: 207px; top: 12px; width: 1px; height: 148px; background: #22282C;"></div>
         <sc-for list="{{ nightHours }}" as="h" hint-placeholder-count="5">
-          <div style="position: absolute; top: 0; width: 86px; height: 180px; left: {{ h.x }}px;">
-            <div style="position: absolute; left: 0; top: 44px; width: 86px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #4C555B;">{{ h.label }}</div>
-            <div style="position: absolute; left: 0; top: 62px; width: 86px; text-align: center; font-size: 30px; font-weight: 500; color: #7C878E;">{{ h.temp }}</div>
+          <div style="position: absolute; top: 0; width: 84px; height: 180px; left: {{ h.x }}px;">
+            <div style="position: absolute; left: 0; top: 44px; width: 84px; text-align: center; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #4C555B;">{{ h.label }}</div>
+            <div style="position: absolute; left: 0; top: 62px; width: 84px; text-align: center; font-size: 30px; font-weight: 500; color: #7C878E;">{{ h.temp }}</div>
           </div>
         </sc-for>
       </div>
@@ -290,7 +346,7 @@ a, a:hover { color: #3FBFB0; }
       <div style="width: 330px; color: #7C878E; font-size: 12px; line-height: 1.7; padding-top: 22px;">
         <div style="color: #E2703A; letter-spacing: 1.5px; font-weight: 500;">MEASUREMENTS</div>
         <div>Same hero geometry as Today · hero recolors oat → #B3AB9C (oat mixed 45% toward aluminum-dim) · condition in aluminum-dim · clock micro #4C555B at place position</div>
-        <div>Strip: 5 columns × 86px from x208 · hour label y44 #4C555B · temp 30px y62 aluminum-dim (ramp suppressed) · no icons, ribbon, precip, wind, indicator · seam dims to surface-hi</div>
+        <div>Strip: 5 columns × 84px from x210 (ends at the 630 safe line) · hour label y44 #4C555B · temp 30px y62 aluminum-dim (ramp suppressed) · no icons, ribbon, precip, wind, indicator · seam dims to surface-hi</div>
         <div>Enters when backlight ≤ BL_LEVEL_DEEPNIGHT, leaves on presence boost, 1500ms cosine both ways</div>
         <div style="color: #3FBFB0;">New state — shipped firmware only dims the backlight; this reduces the drawn content too</div>
       </div>
@@ -333,22 +389,28 @@ a, a:hover { color: #3FBFB0; }
     <div>
       <div style="color: #C9D1D6; font-size: 13px; letter-spacing: 1.5px; font-weight: 500; margin-bottom: 6px;">7 · SETUP / NO WI-FI</div>
       <div data-screen-label="07 Setup" style="position: relative; width: 640px; height: 180px; background: #0E1113; overflow: hidden; outline: 1px solid #2E353A;">
-        <div style="position: absolute; left: 10px; top: 16px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #E2703A;">NO WI-FI CONFIGURED</div>
-        <div style="position: absolute; left: 10px; top: 38px; font-size: 20px; color: #C9D1D6;">Join this network from your phone:</div>
-        <div style="position: absolute; left: 10px; top: 74px; height: 52px; border-radius: 26px; background: #171B1E; border: 1px solid #3FBFB0; display: flex; align-items: center; gap: 12px; padding: 0 24px;">
-          <span style="font-family: 'Material Symbols Rounded'; font-size: 24px; line-height: 1; color: #3FBFB0;">wifi</span>
-          <span style="font-size: 30px; font-weight: 500; color: #3FBFB0;">Airstream-Weather</span>
+        <div style="position: absolute; left: 10px; top: 16px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">GET STARTED</div>
+        <div style="position: absolute; left: 10px; top: 34px; line-height: 1; font-size: 20px; color: #C9D1D6; white-space: nowrap;">Join this network from another device:</div>
+        <div style="position: absolute; left: 10px; top: 78px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E; line-height: 2.4; white-space: nowrap;">1&#8194;&#8194;JOIN THE NETWORK<br>2&#8194;&#8194;PICK YOUR WI-FI<br>3&#8194;&#8194;DONE</div>
+        <div style="position: absolute; left: 178px; top: 68px; height: 46px; width: max-content; border-radius: 23px; background: #171B1E; border: 1px solid #3FBFB0; display: flex; align-items: center; gap: 10px; padding: 0 18px; box-sizing: border-box;">
+          <span style="font-family: 'Material Symbols Rounded'; font-size: 22px; line-height: 1; color: #3FBFB0;">wifi</span>
+          <span style="font-size: 30px; font-weight: 500; line-height: 1; color: #3FBFB0; white-space: nowrap;">Airstream-Weather</span>
         </div>
-        <div style="position: absolute; left: 10px; top: 146px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">OPEN NETWORK&#8194;·&#8194;A SETUP PAGE OPENS BY ITSELF</div>
-        <div style="position: absolute; left: 480px; top: 38px; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E; line-height: 2.4;">1&#8194;&#8194;JOIN THE NETWORK<br>2&#8194;&#8194;PICK YOUR HOME WI-FI<br>3&#8194;&#8194;DONE — IT FINDS ITSELF</div>
+        <div style="position: absolute; left: 178px; top: 120px; line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">PASSWORD</div>
+        <div style="position: absolute; left: 178px; top: 134px; line-height: 1; font-size: 30px; font-weight: 500; color: #E8DCC8;">{{ apPw }}</div>
+        <div style="position: absolute; left: 521px; top: 28px; width: 99px; text-align: center; line-height: 1; font-size: 12px; font-weight: 500; letter-spacing: 1px; color: #7C878E;">SCAN TO JOIN</div>
+        <canvas ref="{{ qrRef }}" width="99" height="99" style="position: absolute; left: 521px; top: 54px; border-radius: 2px;"></canvas>
       </div>
     </div>
     <sc-if value="{{ showAnn }}" hint-placeholder-val="{{ true }}">
       <div style="width: 330px; color: #7C878E; font-size: 12px; line-height: 1.7; padding-top: 22px;">
         <div style="color: #E2703A; letter-spacing: 1.5px; font-weight: 500;">MEASUREMENTS</div>
-        <div>Eyebrow micro sunset (10,16) · instruction Body (10,38) · AP chip: 52px tall pill r26, surface bg, 1px turquoise border, wifi glyph 24px + name in Title 30 turquoise, x10 y74, padding 24 · footnote micro (10,146)</div>
-        <div>Steps column x480, micro, 29px line pitch — readable while holding a phone</div>
-        <div>The AP name is the only turquoise text on screen; nothing competes with it</div>
+        <div>Eyebrow GET STARTED micro aluminum-dim (10,16) · instruction Body (10,34)</div>
+        <div>Steps column x10, y78, micro, 29px pitch, nowrap — left column under the instruction</div>
+        <div>Network block centered x178: AP chip 46px pill r23, surface bg, 1px turquoise border, wifi glyph 22px + name Title 30 turquoise, (178,66), padding 18 · PASSWORD label micro (178,118) + value Title 30 oat (178,132) — both line-height 1 so the 30px cut's box ends at y162, clear of the safe line — grouped 4+4 · ~25px gutter to the QR</div>
+        <div>QR: 99×99 at (521,50) — 29×29 modules (v3, ECC L) at 3px + 6px quiet zone, ground modules on aluminum ground (light field required for scanners) · payload WIFI:T:WPA;S:Airstream-Weather;P:&lt;pw&gt;;; · caption SCAN TO JOIN micro above it, centered y30 · LVGL: lv_qrcode_create, no new assets</div>
+        <div>Password: 8 digits generated once at first boot, persisted in NVS — WPA2-PSK has an 8-character minimum, so 6 digits is not usable on a protected AP. Rotates only on factory reset.</div>
+        <div>Turquoise stays on the AP name + chip border; the password takes oat so the two read as separate facts</div>
       </div>
     </sc-if>
   </div>
@@ -450,17 +512,148 @@ class Component extends DCLogic {
       { label: "11PM", icon: "nightlight", t: 54, prob: 0, dir: 90, spd: 2 }
     ];
   }
-  componentDidMount() { this.drawRibbon(); }
+  apPassword() {
+    if (!this._pw) {
+      let s = "";
+      for (let i = 0; i < 8; i++) s += Math.floor(Math.random() * 10);
+      this._pw = s;
+    }
+    return this._pw;
+  }
+  qrMatrix(text) {
+    // QR version 3 (29×29), ECC level L, byte mode — 55 data + 15 EC codewords.
+    const SIZE = 29, DATA_CW = 55, EC_CW = 15;
+    const exp = new Array(512), log = new Array(256);
+    for (let i = 0, x = 1; i < 255; i++) { exp[i] = x; log[x] = i; x <<= 1; if (x & 256) x ^= 0x11D; }
+    for (let i = 255; i < 512; i++) exp[i] = exp[i - 255];
+    const mul = (a, b) => (a === 0 || b === 0) ? 0 : exp[log[a] + log[b]];
+
+    const bytes = [];
+    for (let i = 0; i < text.length; i++) bytes.push(text.charCodeAt(i) & 0xff);
+    const bits = [];
+    const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+    push(4, 4); push(bytes.length, 8);
+    bytes.forEach(b => push(b, 8));
+    push(0, Math.min(4, DATA_CW * 8 - bits.length));
+    while (bits.length % 8) bits.push(0);
+    const data = [];
+    for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(""), 2));
+    const pad = [0xEC, 0x11];
+    for (let i = 0; data.length < DATA_CW; i++) data.push(pad[i % 2]);
+
+    let gen = [1];
+    for (let i = 0; i < EC_CW; i++) {
+      const next = new Array(gen.length + 1).fill(0);
+      for (let j = 0; j < gen.length; j++) { next[j] ^= gen[j]; next[j + 1] ^= mul(gen[j], exp[i]); }
+      gen = next;
+    }
+    const rem = new Array(EC_CW).fill(0);
+    for (const d of data) {
+      const factor = d ^ rem[0];
+      rem.shift(); rem.push(0);
+      for (let j = 0; j < EC_CW; j++) rem[j] ^= mul(gen[j + 1], factor);
+    }
+    const all = data.concat(rem);
+
+    const m = Array.from({ length: SIZE }, () => new Array(SIZE).fill(0));
+    const res = Array.from({ length: SIZE }, () => new Array(SIZE).fill(false));
+    const finder = (r, c) => {
+      for (let i = -1; i <= 7; i++) for (let j = -1; j <= 7; j++) {
+        const rr = r + i, cc = c + j;
+        if (rr < 0 || cc < 0 || rr >= SIZE || cc >= SIZE) continue;
+        const on = (i >= 0 && i <= 6 && (j === 0 || j === 6)) || (j >= 0 && j <= 6 && (i === 0 || i === 6)) || (i >= 2 && i <= 4 && j >= 2 && j <= 4);
+        m[rr][cc] = on ? 1 : 0; res[rr][cc] = true;
+      }
+    };
+    finder(0, 0); finder(0, SIZE - 7); finder(SIZE - 7, 0);
+    for (let i = 8; i < SIZE - 8; i++) { m[6][i] = i % 2 === 0 ? 1 : 0; res[6][i] = true; m[i][6] = i % 2 === 0 ? 1 : 0; res[i][6] = true; }
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const rr = 22 + i, cc = 22 + j;
+      m[rr][cc] = (Math.abs(i) === 2 || Math.abs(j) === 2 || (i === 0 && j === 0)) ? 1 : 0;
+      res[rr][cc] = true;
+    }
+    for (let i = 0; i < 9; i++) { if (!res[8][i]) res[8][i] = true; if (!res[i][8]) res[i][8] = true; }
+    for (let i = 0; i < 8; i++) { res[SIZE - 1 - i][8] = true; res[8][SIZE - 1 - i] = true; }
+    m[SIZE - 8][8] = 1; res[SIZE - 8][8] = true;
+
+    const dbits = [];
+    all.forEach(b => { for (let i = 7; i >= 0; i--) dbits.push((b >> i) & 1); });
+    let idx = 0, up = true;
+    for (let c = SIZE - 1; c > 0; c -= 2) {
+      if (c === 6) c = 5;
+      for (let i = 0; i < SIZE; i++) {
+        const r = up ? SIZE - 1 - i : i;
+        for (const cc of [c, c - 1]) {
+          if (!res[r][cc]) { m[r][cc] = idx < dbits.length ? dbits[idx] : 0; idx++; }
+        }
+      }
+      up = !up;
+    }
+
+    const maskFn = [
+      (i, j) => (i + j) % 2 === 0, (i, j) => i % 2 === 0, (i, j) => j % 3 === 0,
+      (i, j) => (i + j) % 3 === 0, (i, j) => (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0,
+      (i, j) => ((i * j) % 2) + ((i * j) % 3) === 0, (i, j) => (((i * j) % 2) + ((i * j) % 3)) % 2 === 0,
+      (i, j) => (((i + j) % 2) + ((i * j) % 3)) % 2 === 0
+    ];
+    const penalty = (g) => {
+      let p = 0;
+      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+        if (c < SIZE - 1 && r < SIZE - 1 && g[r][c] === g[r][c + 1] && g[r][c] === g[r + 1][c] && g[r][c] === g[r + 1][c + 1]) p += 3;
+      }
+      for (let r = 0; r < SIZE; r++) {
+        let run = 1;
+        for (let c = 1; c < SIZE; c++) { if (g[r][c] === g[r][c - 1]) { run++; if (run === 5) p += 3; else if (run > 5) p += 1; } else run = 1; }
+      }
+      for (let c = 0; c < SIZE; c++) {
+        let run = 1;
+        for (let r = 1; r < SIZE; r++) { if (g[r][c] === g[r - 1][c]) { run++; if (run === 5) p += 3; else if (run > 5) p += 1; } else run = 1; }
+      }
+      return p;
+    };
+    let best = null, bestMask = 0, bestScore = Infinity;
+    for (let mk = 0; mk < 8; mk++) {
+      const g = m.map(row => row.slice());
+      for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!res[r][c] && maskFn[mk](r, c)) g[r][c] ^= 1;
+      const sc = penalty(g);
+      if (sc < bestScore) { bestScore = sc; best = g; bestMask = mk; }
+    }
+    const fmt = (0b01 << 3) | bestMask;
+    let d = fmt << 10;
+    const bl = (v) => { let n = 0; while (v) { n++; v >>= 1; } return n; };
+    while (bl(d) >= 11) d ^= 0x537 << (bl(d) - 11);
+    const fbits = ((fmt << 10) | d) ^ 0x5412;
+    const fb = i => (fbits >> i) & 1;
+    for (let i = 0; i <= 5; i++) best[8][i] = fb(i);
+    best[8][7] = fb(6); best[8][8] = fb(7); best[7][8] = fb(8);
+    for (let i = 9; i <= 14; i++) best[14 - i][8] = fb(i);
+    for (let i = 0; i <= 6; i++) best[SIZE - 1 - i][8] = fb(i);
+    for (let i = 7; i <= 14; i++) best[8][SIZE - 8 + (i - 7)] = fb(i);
+    best[SIZE - 8][8] = 1;
+    return best;
+  }
+  drawQr() {
+    const cv = this._qr;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const grid = this.qrMatrix("WIFI:T:WPA;S:Airstream-Weather;P:" + this.apPassword() + ";;");
+    const px = 3, quiet = 6, n = grid.length;
+    ctx.fillStyle = "#C9D1D6";
+    ctx.fillRect(0, 0, n * px + quiet * 2, n * px + quiet * 2);
+    ctx.fillStyle = "#0E1113";
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (grid[r][c]) ctx.fillRect(quiet + c * px, quiet + r * px, px, px);
+  }
+  componentDidMount() { this.drawRibbon(); this.drawQr(); }
   drawRibbon() {
     const cv = this._ribbon;
     if (!cv) return;
-    const H = 30, W = 432;
+    const H = 30, W = 420;
     const ctx = cv.getContext("2d");
     ctx.clearRect(0, 0, W, H);
     const temps = this.hoursData().map(h => h.t);
     let tmin = Math.min(...temps), tmax = Math.max(...temps), span = tmax - tmin;
     if (span < 4) { const mid = (tmax + tmin) / 2; tmin = mid - 2; tmax = mid + 2; span = 4; }
-    const pad = 4, usable = H - pad * 2, colW = 43.2;
+    const pad = 4, usable = H - pad * 2, colW = 42;
     const yFor = t => pad + usable * (1 - (t - tmin) / span);
     const img = ctx.createImageData(W, H);
     const put = (x, y, rgb, a) => {
@@ -488,7 +681,8 @@ class Component extends DCLogic {
   renderVals() {
     const showAnn = this.props.showAnnotations ?? true;
     const hours = this.hoursData().map((h, i) => ({
-      x: 208 + i * 43,
+      x: 210 + i * 42,
+      tempSize: h.t >= 100 || h.t <= -10 ? 24 : 30,
       sepOpacity: i > 0 ? 0.5 : 0,
       label: h.label,
       hourColor: h.label === "NOW" ? "#3FBFB0" : "#7C878E",
@@ -507,6 +701,15 @@ class Component extends DCLogic {
       return { x: i < 3 ? 20 + i * 43 : 491 + (i - 3) * 43, sepOpacity: (i === 0 || i === 3) ? 0 : 0.5, label: h.label, icon: h.icon, temp: String(h.t), tempColor: this.tempColor(h.t) };
     });
     const seamDots = Array.from({ length: 9 }, (_, i) => ({ y: 16 + i * 16 }));
+    const sysSeamDots = Array.from({ length: 39 }, (_, i) => ({ x: 10 + i * 16 }));
+    const sysGrid = [
+      ["NETWORK", "Basecamp", 20, 400, "", 10, 56],
+      ["IP ADDRESS", "192.168.1.87", 20, 400, "", 220, 56],
+      ["LOCATION", "Denver", 20, 400, "39.74, −104.99", 430, 56],
+      ["UPDATE HOST", "airstream-weather.local", 15, 500, "", 10, 104],
+      ["TOUCH CONTROLLER", "AXS15231B", 15, 500, "", 220, 104],
+      ["DISPLAY", "640 × 180", 15, 500, "RGB565", 430, 104]
+    ].map(([label, value, size, weight, suffix, x, y]) => ({ label, value, size, weight, suffix, x, y }));
     const bootDotsTop = Array.from({ length: 38 }, (_, i) => ({ x: 16 + i * 16 }));
     const hd = (i, label, value, color, suffix) => ({ label, value, suffix: suffix || "", color: color || "#C9D1D6", x: [12, 116, 214][i % 3], y: 68 + Math.floor(i / 3) * 52 });
     const hourDetail = [
@@ -531,7 +734,7 @@ class Component extends DCLogic {
       { icon: "cardiology", label: "HEART STRAIN", risk: "LOW", color: "#3FBFB0", y: 139 }
     ];
     const nightHours = ["3AM", "4AM", "5AM", "6AM", "7AM"].map((label, i) => ({
-      label, temp: String([52, 51, 50, 49, 51][i]), x: 208 + i * 86
+      label, temp: String([52, 51, 50, 49, 51][i]), x: 210 + i * 84
     }));
     const glyphs = [
       ["sunny", "CLEAR DAY", "U+E81A", "#E8DCC8"],
@@ -555,9 +758,11 @@ class Component extends DCLogic {
       ["sunset", "#E2703A"], ["sky", "#6FA8C7"]
     ].map(([name, hex]) => ({ name, hex }));
     return {
-      showAnn, hours, sideHours, seamDots, sparkPoints, graphPast, graphRecent, bioRows, bootDotsTop, hourDetail, nowDetail, nightHours, glyphs, swatches,
+      showAnn, hours, sideHours, seamDots, sysSeamDots, sysGrid, sparkPoints, graphPast, graphRecent, bioRows, bootDotsTop, hourDetail, nowDetail, nightHours, glyphs, swatches,
       temp70: this.tempColor(70),
-      ribbonRef: el => { this._ribbon = el; if (el) this.drawRibbon(); }
+      apPw: this.apPassword().slice(0, 4) + " " + this.apPassword().slice(4),
+      ribbonRef: el => { this._ribbon = el; if (el) this.drawRibbon(); },
+      qrRef: el => { this._qr = el; if (el) this.drawQr(); }
     };
   }
 }

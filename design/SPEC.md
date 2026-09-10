@@ -15,9 +15,23 @@ Night Mode state is added; the rivet seam gains its dots.
 
 ## Font cuts
 
-`font_hour` (24px) is **retired** — hourly temperatures now use `font_title`
-(30px). No new cut needs generating; delete `font_hour` from
-`tools/build_fonts.sh` and reclaim its flash. Every other cut is unchanged.
+Hourly temperatures move to the 30px Title size, **but 30px does not hold
+three digits in a 42px column** — Jost Medium measures ~52px at `100`, where
+the 24px cut measures ~41px. So both cuts ship:
+
+- `font_hour` becomes **30px** (was 24) — used for 1–2 digit temperatures,
+  which is every hour in a normal day.
+- `font_hour_narrow` **stays at 24px** — the existing cut, kept rather than
+  retired, and selected per label whenever the formatted value is 3
+  characters (≥ 100 °F or ≤ −10 °F).
+
+Cost, stated plainly: this is one **new** 30px cut generated in
+`tools/build_fonts.sh` and no cut removed, so hourly type costs more flash
+than today rather than less. Swap the label's font at update time
+(`lv_obj_set_style_text_font`) — no relayout needed, both cuts are centered
+in the same 42px column.
+
+Every other cut is unchanged.
 
 ## 1 · Today
 
@@ -37,21 +51,58 @@ Now zone (all x = 10 unless noted):
 | Meta line `FEELS 71° · H 84° L 58°` | (10, 124) | Micro, `aluminum-dim` |
 | Place line `DENVER · 2:35P · 4 MIN AGO` | (10, 146) | Micro, `aluminum-dim`, tracking 0.5 — must fit within x10–200 (clock drops the M-space, LV_LABEL_LONG_CLIP) |
 
-Hourly strip — ten 43px columns from x = 208, hairline separators 1px `rivet`
-at 50% opacity, y20–y112:
+Hourly strip — **ten 42px columns from x = 210**, ending at x630, the 10px
+safe line. (The shipped `208 + i × 43` pitch ends at 638, inside the masked
+corner; the strip zone still splits at x208, but the drawn columns inset to
+respect the margin.) Hairline separators 1px `rivet` at 50% opacity, y20–y112:
 
 | Row | y | Spec |
 |---|---|---|
 | Hour label | 6 | Micro, `aluminum-dim`; current hour `NOW` in `turquoise` |
 | Condition glyph 20px | 22 | icons_sm, colored by temperature ramp |
-| Temperature | 42 | **Title 30**, ramp color, no degree sign |
-| Trend ribbon | 78, h 30 | 2px polyline through hour centers, ramp-colored; fill below fades with squared falloff from 70/255 max opacity (unchanged algorithm, band moved/resized) |
+| Temperature | 42 | **Title 30**, ramp color, no degree sign; falls back to the 24px `font_hour_narrow` cut at 3 digits (see Font cuts) |
+| Trend ribbon | 78, h 30, x210 w420 | 2px polyline through hour centers, ramp-colored; fill below fades with squared falloff from 70/255 max opacity (unchanged algorithm, band moved/resized) |
 | Precip % | 112 | Micro, `turquoise`, shown only ≥ 10% |
 | Precip bar | bottom edge y152 | 2px wide, centered, height = prob × 0.24 (0–24px), `turquoise`; suppressed with the % |
 | Wind | 156 | `navigation` glyph 11px (icons_ui) rotated to (wind_dir + 180)°, hidden < 3 mph, + integer speed, Micro, `sky` |
 
-`NOW` column keeps its `surface` slab (x208, y4, 42 × 158, r5). Page indicator
+`NOW` column keeps its `surface` slab (x210, y4, 41 × 158, r5). Page indicator
 unchanged: 12×3 `turquoise` bar + 4×3 `rivet` dots, gap 4, bottom y174.
+
+## 1B · System
+
+The second page (swipe left from Today). The shipped screen packs eight
+fields into four 147px columns, which is what forces values like
+`airstream-weather.local` and `213K / 7842K PSRAM` to wrap. This pass widens
+the grid to **three 200px columns** and moves two things out of it.
+
+Top bar: `System` Title 30 (10, 6). **Memory moves here**: a 7px status dot
+plus `HEAP 213K · PSRAM 7842K` Micro at (124, 14) — dot `turquoise`,
+`sunset` when free heap < 40K. `CHANGE NETWORK` pill 168 × 24 r12,
+`surface-hi`, right-aligned at y8 (its touch target extends to the bar edges
+for a 44px height). Header rule 620 × 1 at y40, punctuated by **2px rivet
+dots every 16px at y44** — the seam motif read horizontally.
+
+Grid: three 200px columns at x10 / x220 / x430, vertical 1px `rivet`
+hairlines at x219 and x429 (y56–134); rows at y56 and y104, each a Micro
+label with its value 6px below. Human values take **Body 20** `aluminum`;
+machine strings take **Label 15** so nothing wraps at 200px:
+
+| | col 1 | col 2 | col 3 |
+|---|---|---|---|
+| row 1 | NETWORK · `Basecamp` (Body) | IP ADDRESS · `192.168.1.87` (Body) | LOCATION · `Denver` (Body) + coords Micro |
+| row 2 | UPDATE HOST (Label) | TOUCH CONTROLLER (Label) | DISPLAY `640 × 180` + `RGB565` Micro |
+
+Wi-Fi **signal bars** sit beside the network value at (116, 62): four 4px
+bars, heights 5 / 8 / 11 / 14, lit `turquoise` per 25% of RSSI range, unlit
+`rivet`.
+
+**Uptime and build leave the grid** for a footer line in Micro #4C555B at
+(10, 148): `UP 3H 42M · v1.0.0 · BUILD 2026-09-09`. Page indicator unchanged,
+second page active.
+
+**Brightness is removed** from this screen — it lives in Quick Settings, one
+swipe away, and duplicating it here earned a grid cell for nothing.
 
 ## 2 · Hour Detail
 
@@ -178,8 +229,8 @@ auto-dim target ≤ `BL_LEVEL_DEEPNIGHT`, exits on presence boost; both ways
 
 Hero geometry unchanged; hero recolors `oat` → **#B3AB9C** (oat mixed 45%
 toward `aluminum-dim`), condition Body in `aluminum-dim`, clock Micro
-**#4C555B** at the place position. Strip compresses to **5 columns × 86px**
-from x208: hour label Micro #4C555B at y44, temperature Title 30
+**#4C555B** at the place position. Strip compresses to **5 columns × 84px**
+from x210 (ending at the 630 safe line): hour label Micro #4C555B at y44, temperature Title 30
 `aluminum-dim` (ramp suppressed) at y62. No icons, ribbon, precip, wind, or
 page indicator. Seam dims to `surface-hi`.
 
@@ -195,12 +246,43 @@ wordless spinner.
 
 ## 7 · Setup / No Wi-Fi
 
-Eyebrow Micro `sunset` `NO WI-FI CONFIGURED` (10, 16); instruction Body
-(10, 38); **AP chip** at (10, 74): 52px pill r26, `surface` bg, 1px
-`turquoise` border, 24px padding — `wifi` glyph 24px + `Airstream-Weather` in
-Title 30, both `turquoise` (the only turquoise on screen). Footnote Micro
-(10, 146). Steps column Micro at x480, y38, 29px pitch: JOIN → PICK YOUR HOME
-WI-FI → DONE.
+The AP is **password-protected**, and the screen carries three ways in: the
+name, the password, and a scannable join code.
+
+Header: eyebrow `GET STARTED` Micro in `aluminum-dim` (10, 16) — neutral, not
+an error; instruction `Join this network from another device:` Body (10, 34).
+
+Left column — **steps** Micro at (10, 78), 29px pitch, no wrap:
+`1 JOIN THE NETWORK` / `2 PICK YOUR WI-FI` / `3 DONE`.
+
+Center column — the **network identity**, in the visual middle where the eye
+lands: AP chip at (178, 68), 46px pill r23, `surface` bg, 1px `turquoise`
+border, 18px padding, width fits content — `wifi` glyph 22px +
+`Airstream-Weather` in Title 30, both `turquoise`. Password below:
+`PASSWORD` Micro `aluminum-dim` (178, 120), value Title 30 `oat` (178, 134),
+grouped 4 + 4. Set both labels to line-height 1 (LVGL: `lv_style_set_text_line_space(0)`)
+so the 30px cut’s box ends at y162, clear of the 10px bottom safe line. Turquoise stays on the network identity and `oat` on the
+password so the two read as separate facts. ~25px gutter to the QR.
+
+**QR join code** at (521, 54), 99 × 99, with its caption above: QR version 3, 29 × 29 modules, ECC
+level L, 3px per module plus a 6px quiet zone. Dark modules `ground` on an
+`aluminum` field — scanners need a light ground, so this patch inverts
+deliberately. Payload is the standard Wi-Fi URI, which iOS and Android both
+join directly from the camera:
+
+```
+WIFI:T:WPA;S:Airstream-Weather;P:<password>;;
+```
+
+Caption `SCAN TO JOIN` Micro centered above it at y28, 14px clear of the code. Implement with LVGL's
+built-in `lv_qrcode_create` (dark = `COL_GROUND`, light = `COL_ALUMINUM`,
+size 87 + 6px padding) — no new assets, no external encoder.
+
+**Password rule.** 8 digits, generated once at first boot and persisted in
+NVS; rotates only on factory reset. WPA2-PSK enforces an **8-character
+minimum**, so a 6-digit password cannot be used on a protected AP — the extra
+two digits are a protocol requirement, not a design choice. Display grouped
+4 + 4 for readability at four feet.
 
 ## 8 · Icon set
 
@@ -216,6 +298,8 @@ construction, recolors as text, and is already subset by
 
 Things `tokens.json` cannot express, with their measurements:
 
+- **kStripX 210, kHourColW 42** — the drawn hourly columns (the 208 zone
+  split is unchanged; only the drawn strip insets to the safe line).
 - **kPrecipBarW 2, kPrecipBarMaxH 24, kPrecipBarBottomY 152** — the hourly
   probability bar (suppressed < 10%).
 - **Wind arrow**: icons_ui `navigation` at 11px, `lv_obj_set_style_transform_angle`
@@ -233,6 +317,10 @@ Things `tokens.json` cannot express, with their measurements:
   Pressure Detail overlay per §3B (graph 240×90 at 180,52; seams x160/x432;
   bio rows y64/89/114/139). Needs 24h of hourly pressure retained + RH and
   temp for the body-effect thresholds.
+- **Setup AP**: `AP_PASSWORD_LEN 8` (NVS-persisted, first-boot random),
+  `lv_qrcode` 87px + 6px padding at (521, 54), payload
+  `WIFI:T:WPA;S:<ssid>;P:<pw>;;`. The AP changes from open to WPA2 — softAP
+  init needs the password argument.
 - **Press feedback**: 90ms scale to 0.97 + `surface-hi` fill (docs/UX.md
   currently specifies fill only — update it alongside this).
 

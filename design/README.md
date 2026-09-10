@@ -39,12 +39,14 @@ value, measured in app space (640 × 180 after rotation), matching how
 ## Implementation order
 
 1. Apply `tokens.json` (theme + k-constants).
-2. Fonts: hourly temps move to `font_title` (30px). **Delete the 24px
-   `font_hour` cut** from `tools/build_fonts.sh` — no new cut is needed;
-   reclaim the flash. Add Material Symbols codepoints for the new glyphs:
+2. Fonts: hourly temps move to 30px, but **keep the 24px cut too** — 30px
+   does not fit three digits in a 42px column, so labels fall back to
+   `font_hour_narrow` at ≥100°. Net: one new cut generated, none removed
+   (see SPEC.md §Font cuts). Add Material Symbols codepoints for the new glyphs:
    `navigation`, `speed`, `rheumatology`, `neurology`, `hearing`,
    `cardiology` (subset per existing pipeline in `icons.h`).
-3. Today screen per SPEC §1: 30px hour temps, wind arrow + speed, precip
+3. Today screen per SPEC §1: 42px columns from x210 (the strip insets to the
+   10px safe line), 30px hour temps with the 3-digit fallback, wind arrow + speed, precip
    bars, seam rivet dots, re-spaced column rhythm.
 4. Hour Detail per §2: center panel replacing the full-screen overlay,
    neighbor-hour tap targets, 3 × 2 grid.
@@ -55,9 +57,15 @@ value, measured in app space (640 × 180 after rotation), matching how
    effects). Requires retaining 24 hourly pressure samples plus RH and temp —
    see `data_requirements` in logic.json; extend the weather store in
    `firmware/src/net/weather.cpp` accordingly.
-7. Quick Settings per §4 (130px top sheet), Night Mode per §5 (new state),
-   Boot / Setup per §6–7.
-8. Update `docs/UX.md` per SPEC's final section (press-feedback scale, panel
+7. System page per §1B — three 200px columns, memory + status dot in the top
+   bar, uptime/build to a footer line, brightness removed (it lives in Quick
+   Settings).
+8. Quick Settings per §4 (130px top sheet), Night Mode per §5 (new state),
+   Boot per §6. Setup per §7 — this one changes behavior, not just layout:
+   the provisioning AP becomes **WPA2-protected** with an 8-digit password
+   generated at first boot and persisted in NVS, shown on screen alongside an
+   `lv_qrcode` Wi-Fi join code. Note WPA2's 8-character PSK minimum.
+9. Update `docs/UX.md` per SPEC's final section (press-feedback scale, panel
    overlays, new pressure drill-down gesture).
 
 ## Adapting to other devices
@@ -79,8 +87,9 @@ This edition targets the T-Display S3 Long's 640 × 180 canvas. To port:
 ## Files
 
 - `tokens.json`, `logic.json`, `SPEC.md` — as above
-- `artboards/Redesign Artboards.dc.html` — all 9 artboards + swatches, type
+- `artboards/Redesign Artboards.dc.html` — all 10 artboards + swatches, type
   specimen, motion spec, with measurement annotations
 - `artboards/Current UI (shipped, reference).dc.html` — the shipped UI
   recreated 1:1, for before/after diffing
-- `exports/01…08` PNGs — one per artboard (03b is the new Pressure Detail)
+- `exports/01…08` PNGs — one per artboard (01b System and 03b Pressure Detail
+  are new)
