@@ -93,6 +93,8 @@
 #define WX_PRESSURE_HISTORY   25         // hourly MSL pressure, -24h .. now, for the trend
 #define WX_REFRESH_INTERVAL_S (10 * 60)  // successful refresh cadence
 #define WX_RETRY_INTERVAL_S   60         // after a failed fetch
+#define WX_QUICK_RETRIES      2          // immediate retries of a dropped transfer...
+#define WX_QUICK_RETRY_S      4          // ...this far apart, before the slow cadence
 #define WX_HTTP_TIMEOUT_MS    12000
 
 // ---------------------------------------------------------------------------

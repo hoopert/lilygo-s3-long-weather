@@ -40,6 +40,16 @@
 #define ICON_ERROR               "\xEE\x80\x80"   // U+E000 error
 #define ICON_DONE                "\xEE\xA1\xB6"   // U+E876 done
 #define ICON_NAV                 "\xEE\x95\x9D"   // U+E55D navigation
+// Compass arrows, icons_xs only. Indexed by octant from north, clockwise:
+// wind_arrow_glyph() picks one for the direction the wind is blowing to.
+#define ICON_ARROW_N             "\xEF\x87\xA0"   // U+F1E0 north
+#define ICON_ARROW_NE            "\xEF\x87\xA1"   // U+F1E1 north_east
+#define ICON_ARROW_E             "\xEF\x87\x9F"   // U+F1DF east
+#define ICON_ARROW_SE            "\xEF\x87\xA4"   // U+F1E4 south_east
+#define ICON_ARROW_S             "\xEF\x87\xA3"   // U+F1E3 south
+#define ICON_ARROW_SW            "\xEF\x87\xA5"   // U+F1E5 south_west
+#define ICON_ARROW_W             "\xEF\x87\xA6"   // U+F1E6 west
+#define ICON_ARROW_NW            "\xEF\x87\xA2"   // U+F1E2 north_west
 #define ICON_BATTERY             "\xEE\x86\xA4"
 // Pressure module and body effects (design/SPEC.md §3, §3B).
 #define ICON_SPEED               "\xEE\xA7\xA4"   // U+E9E4 speed - barometer

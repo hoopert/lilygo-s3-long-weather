@@ -23,10 +23,10 @@ Tick what passes; anything else is the fix round.
 | Strip geometry | Ten columns; the last one ends short of the right edge (at the safe line, not under the bezel). `NOW` in turquoise on a raised slab. |
 | Hourly temperatures | 30px, on the colour ramp, no degree sign. A three-digit value (100°F) drops to a smaller cut and still fits its column. |
 | Rain | A percentage in turquoise **and** a thin bar under it, taller with the chance. Both absent below 10%. |
-| Wind | A small arrow and a number in sky blue. The arrow points where the wind is *going* (a north wind points down). Absent below 3 mph. No `NW` text on the strip. |
+| Wind | A small arrow and a number in sky blue. The arrow is one of eight compass glyphs and points where the wind is *going* (a north wind points down). Absent below 3 mph. No `NW` text on the strip. |
 | Now zone | Big temperature with the degree mark up by its cap and a small `F` below that; icon top-right of the zone; condition; `FEELS 71° · H 84° L 58°`; `DENVER · 2:35P · 4 MIN AGO`. The last line fits with a long town name. |
 | Seam | A hairline between the zones with tiny rivet dots down it. |
-| Press feedback | Every pill and button shrinks slightly and lightens while held. |
+| Press feedback | Every pill and button lightens while held. (It does not shrink: the design's 0.97 scale needs an LVGL alpha layer this 16-bit build cannot draw.) |
 
 ## Hour Detail
 

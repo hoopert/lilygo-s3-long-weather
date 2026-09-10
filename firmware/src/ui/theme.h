@@ -79,8 +79,8 @@ extern lv_style_t style_body;
 extern lv_style_t style_label;
 extern lv_style_t style_micro;
 
-// Press feedback for every tappable pill and button: 90ms to 0.97 scale with
-// a surface-hi fill, and back. Apply with theme_press_feedback(); it adds the
+// Press feedback for every tappable pill and button: 90ms to a surface-hi
+// fill, and back. (No scale: see theme.cpp.) Apply with theme_press_feedback(); it adds the
 // style to the object's pressed state and the transition to both states.
 extern lv_style_t style_pressed;
 extern lv_style_t style_press_transition;

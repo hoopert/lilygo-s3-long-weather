@@ -195,15 +195,16 @@ and the release name. A tagged commit reads `1.1.0`; three commits past it
 reads `1.1.0-3-gabc1234`; a local build with uncommitted changes adds
 `-dirty`. Nothing is bumped by hand.
 
-To cut a release, which is also what `tools/flash.sh` downloads:
+**Every merge to main is a release.** CI's `version` job runs
+`tools/next_version.py`, which looks at the commits since the last tag and
+bumps the patch number - or the minor if any commit (a PR title will do)
+contains `[minor]`, or the major for `[major]` - tags the merge commit,
+builds it, attaches the binary to a GitHub Release under that tag, and
+republishes the installer page. Nobody types a number. `tools/flash.sh`
+downloads the latest of those releases.
 
-```bash
-git tag v1.2.0
-git push origin v1.2.0
-```
-
-The tag builds the binary, attaches it to a GitHub Release, and republishes
-the installer page at that version.
+A tag pushed by hand (`git push origin v1.2.0`) still releases, for the rare
+deliberate re-cut; the automatic job skips a commit that is already tagged.
 
 ---
 

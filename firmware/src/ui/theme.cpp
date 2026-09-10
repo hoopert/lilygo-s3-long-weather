@@ -62,11 +62,14 @@ void theme_init() {
     // The rivet seam. Airstreams are defined by riveted aluminum panel joins,
     // and a 1px hairline between hour columns is the whole of the ornament
     // budget for this design.
-    // Press feedback (design/SPEC.md, "Beyond the tokens"): scale to 0.97 and
-    // fill surface-hi, 90ms each way. transform_zoom is 256 = 1.0.
+    // Press feedback (design/SPEC.md, "Beyond the tokens"): fill surface-hi,
+    // 90ms each way. The spec also scales to 0.97, but transform_zoom on a
+    // widget makes LVGL 8.4 render it through an alpha layer, and without
+    // LV_COLOR_SCREEN_TRANSP (a 32-bit feature; this build is 16-bit) the
+    // layer cannot be created: the button vanishes while held and a warning
+    // is logged every frame. The fill alone reads fine.
     lv_style_transition_dsc_init(&s_press_tr, kPressProps, lv_anim_path_ease_out, 90, 0, nullptr);
     lv_style_init(&style_pressed);
-    lv_style_set_transform_zoom(&style_pressed, 248);
     lv_style_set_bg_color(&style_pressed, lv_color_hex(COL_SURFACE_HI));
     lv_style_set_transition(&style_pressed, &s_press_tr);
     lv_style_init(&style_press_transition);
@@ -187,8 +190,6 @@ const char *icon_for(WxIcon icon) {
 }
 
 void theme_press_feedback(lv_obj_t *obj) {
-    lv_obj_set_style_transform_pivot_x(obj, lv_obj_get_width(obj) / 2, 0);
-    lv_obj_set_style_transform_pivot_y(obj, lv_obj_get_height(obj) / 2, 0);
     lv_obj_add_style(obj, &style_press_transition, 0);
     lv_obj_add_style(obj, &style_pressed, LV_STATE_PRESSED);
 }

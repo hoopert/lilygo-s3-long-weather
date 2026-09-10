@@ -100,7 +100,11 @@ WX_ICONS='0xE81A,0xEF5E,0xF172,0xEA46,0xE2BD,0xE818,0xF61E,0xF176,0xF61F,0xF61D,
 UI_ICONS='0xE798,0xEFD8,0xE63E,0xE648,0xE5D5,0xE8B8,0xE1AB,0xE518,0xE51C,0xE192,0xE14C,0xE000,0xE876,0xE55D,0xE1A4,0xE9E4,0xE128,0xE10E,0xE023,0xE09C'
 # Tiny cut for glyphs set inline with Micro text: the hourly wind arrow and
 # the refresh pill. navigation, refresh.
-XS_ICONS='0xE55D,0xE5D5'
+# navigation, refresh, and the eight compass arrows (north .. north_west):
+# the wind arrow is one of these rather than a rotated `navigation`, because
+# rotating any widget in LVGL 8.4 needs an alpha layer, which needs
+# LV_COLOR_SCREEN_TRANSP, which this 16-bit build does not have.
+XS_ICONS='0xE55D,0xE5D5,0xF1DF,0xF1E0,0xF1E1,0xF1E2,0xF1E3,0xF1E4,0xF1E5,0xF1E6'
 
 gen MaterialSymbolsRounded 56 "$WX_ICONS"              icons_lg
 gen MaterialSymbolsRounded 20 "$WX_ICONS,$UI_ICONS"    icons_sm

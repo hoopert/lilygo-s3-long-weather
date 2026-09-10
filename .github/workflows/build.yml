@@ -3,9 +3,11 @@ name: Build firmware
 # Produces the single-file binary that the web installer and the flash scripts
 # both use, so nobody has to install a toolchain to put this on a board.
 #
-#   every push  -> firmware.bin as a downloadable artifact
-#   every tag   -> a GitHub Release with the binary attached
-#   main branch -> the web installer published to GitHub Pages
+#   every push   -> firmware.bin as a downloadable artifact
+#   merge to main -> a version tag (tools/next_version.py), a GitHub Release
+#                    with the binary attached, and the web installer published
+#                    to GitHub Pages - all without anyone typing a number
+#   a hand-pushed tag still releases, for the rare deliberate re-cut
 on:
   push:
     branches: [main]
@@ -34,13 +36,50 @@ jobs:
       - name: Check pressure logic against design/logic.json
         run: python3 tools/check_pressure_logic.py
 
+  # Every merge to main gets a version tag, decided by tools/next_version.py
+  # from the commits since the last one ([major] / [minor] in a message, else
+  # patch). Pushed with the workflow's own token, which is allowed to write
+  # refs; a tag pushed that way does not trigger a second run, so the build
+  # job below is the one that ships it. Serialised so two quick merges cannot
+  # both claim the same number.
+  version:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: version-tag
+      cancel-in-progress: false
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Tag the next version
+        id: next
+        run: |
+          next="$(python3 tools/next_version.py)"
+          if [[ -z "$next" ]]; then
+            echo "HEAD is already tagged; nothing to do"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$next" -m "v$next"
+          git push origin "v$next"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+          echo "tagged v$next"
+
   build:
+    needs: [version]
+    # The version job only runs on main; PR and tag builds must not wait on it.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       # Full history: the version is `git describe --tags`, which needs the
-      # tags and the commits back to the last one.
+      # tags (including the one the job above just pushed) and the commits
+      # back to the last one.
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -116,10 +155,15 @@ jobs:
         with:
           path: site
 
+      # A release for every version: the one the version job just tagged on a
+      # merge to main, or a tag pushed by hand. tools/flash.sh downloads the
+      # latest of these.
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           files: dist/airstream-weather.bin
           generate_release_notes: true
 
@@ -131,7 +175,7 @@ jobs:
   # while the build job above stays green. See docs/INSTALL.md.
   deploy-pages:
     needs: build
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    if: ${{ !failure() && !cancelled() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) }}
     runs-on: ubuntu-latest
     permissions:
       pages: write
