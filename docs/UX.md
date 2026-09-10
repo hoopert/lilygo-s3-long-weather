@@ -70,12 +70,16 @@ drag handle says which way out.
 
 ### Swipe / tap disambiguation
 
-LVGL delivers `LV_EVENT_CLICKED` on release even when the same press already
-produced a gesture. Without handling that, a swipe left across the hourly strip
-would change screen **and** open an hour detail overlay on top of it.
+A swipe is a swipe and a tap is a tap. LVGL would otherwise deliver
+`LV_EVENT_CLICKED` on release to whatever was under the finger when it first
+touched down - however long the finger stays down after the swipe, and on the
+screen that has since slid away - so a swipe left across the hourly strip
+would change screen **and** open an hour's detail on top of it.
 
-Every gesture handler calls `ui_note_gesture()`; every click handler ignores the
-click while `ui_gesture_recent()` is true (450ms). See
+The moment a gesture is recognised, `ui_note_gesture()` tells LVGL to forget
+the press (`lv_indev_wait_release`), so nothing else from that press is
+delivered to anything. As a second guard, `ui_gesture_recent()` stays true
+until the next touch begins and every click handler checks it. See
 [`screen_manager.h`](../firmware/src/ui/screen_manager.h).
 
 ## The button
@@ -86,7 +90,7 @@ rather than a single action:
 
 | Press | Result |
 |---|---|
-| **Short** | Step brightness down one rung: 100% → 70% → 43% → 24% → 10% → Auto → … |
+| **Short** | Step brightness down one rung: bright (100%) → medium (43%) → dim (12%) → Auto → … |
 | **Double** | Straight back to Auto |
 | **Long (800ms)** | Blank the display. Any touch or press wakes it. |
 

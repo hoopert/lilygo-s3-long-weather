@@ -141,7 +141,7 @@
 #define BL_MANUAL_REVERT_MS (4UL * 60UL * 60UL * 1000UL)
 
 // Brightness steps the BOOT button cycles through on a short press.
-#define BL_MANUAL_STEPS { 255, 180, 110, 60, 25 }
+#define BL_MANUAL_STEPS { 255, 110, 30 }   // bright, medium, dim; then back to Auto
 
 // ---------------------------------------------------------------------------
 // Interaction timing
@@ -152,10 +152,6 @@
 
 #define GESTURE_MIN_DISTANCE 40    // px of travel before a swipe counts
 
-// LVGL still delivers a click when a swipe starts and ends on the same widget,
-// so a swipe across an hour column would change screens AND open that hour's
-// detail overlay. Clicks are ignored for this long after a gesture fires.
-#define GESTURE_CLICK_SUPPRESS_MS 450
 #define UI_SCREEN_ANIM_MS    280
 #define UI_OVERLAY_ANIM_MS   220
 #define UI_VALUE_FADE_MS     400
