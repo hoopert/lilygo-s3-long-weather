@@ -95,6 +95,7 @@ All of it is tunable at the top of
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it fits together, and how to add a screen |
 | [`docs/DESIGN_PLAN.md`](docs/DESIGN_PLAN.md) | The designer's hand-off in `design/`, and the phased plan to apply it |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | What is known and deliberately not done yet |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Where this goes next: the Trailer Command successor, one repo, a fleet of panels on one broker, the network, and corrections to its first prompt |
 | `firmware/` | PlatformIO project |
 | `tools/build_fonts.sh` | Regenerates the eight LVGL font cuts |
 | `tools/flash.sh`, `tools/flash.ps1` | Command-line flashing |
