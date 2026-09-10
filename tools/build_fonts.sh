@@ -44,7 +44,7 @@ curl -sSfL -o "$WORK_DIR/Jost-SemiBold.ttf" "$JOST_SEMIBOLD"
 #   ASCII printable  0x20-0x7E
 #   U+00B0 degree, U+00B7 middot, U+2013 en dash
 #   (wind arrows are drawn as vector triangles, not glyphs - Jost has no arrows)
-FULL_RANGE='0x20-0x7E,0xB0,0xB7,0x2013'
+FULL_RANGE='0x20-0x7E,0xB0,0xB7,0xD7,0x2013'   # degree, middle dot, multiplication sign, en dash
 # The hero cut only ever renders a temperature, so it carries digits and the
 # handful of marks that can appear beside one. This keeps a 72px face under 20KB.
 HERO_RANGE='0x2C-0x3A,0xB0,0x20'

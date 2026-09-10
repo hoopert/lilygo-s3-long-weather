@@ -137,10 +137,22 @@ void net_begin() {
     // this loop - and the panel, and the portal itself - for as long as the
     // radio takes; with a client attached to the AP that was 13 seconds on
     // the glass.
-    // (Public members in WiFiManager 2.0.17; there are no setters.)
+    // (Public members in WiFiManager 2.0.17; there are no setters.) The
+    // cache lives ten minutes: a page request after the default 30s forced a
+    // rescan and then sat in a blocking wait for it, printing dots.
     s_wm._preloadwifiscan = true;
     s_wm._asyncScan = true;
+    s_wm._scancachetime = 10 * 60 * 1000;
     s_wm.setScanDispPerc(true);
+
+    // WiFiManager's own log is off. It is noisy at every level that says
+    // anything useful, and the [net] lines below cover the events that
+    // matter: portal up, a device joining, credentials saved, connected.
+    s_wm.setDebugOutput(false);
+    s_wm.setSaveConfigCallback([]() {
+        Serial.printf("[net] %lums: portal saved \"%s\"; connected\n",
+                      static_cast<unsigned long>(millis()), WiFi.SSID().c_str());
+    });
 
     // Timestamps for the setup path, so the next "the portal took two
     // minutes" report says where the time went: the phone joining the AP,
@@ -156,6 +168,26 @@ void net_begin() {
     });
     s_wm.setWebServerCallback([]() {
         Serial.printf("[net] %lums: portal web server up\n", static_cast<unsigned long>(millis()));
+        // Phones probe a handful of well-known URLs to decide whether a
+        // network is captive. WiFiManager answers them from its not-found
+        // handler, but the core's WebServer logs an error for every URL
+        // without a registered handler first. Registering them is what keeps
+        // "request handler not found" out of the console; the answer is the
+        // same redirect to the portal.
+        static const char *const kProbes[] = {
+            "/hotspot-detect.html", "/library/test/success.html",   // Apple
+            "/generate_204", "/gen_204",                             // Android
+            "/connecttest.txt", "/ncsi.txt", "/redirect",            // Windows
+            "/canonical.html", "/success.txt",                       // Firefox
+        };
+        for (const char *path : kProbes) {
+            s_wm.server->on(path, []() {
+                s_wm.server->sendHeader("Location",
+                                        String("http://") + WiFi.softAPIP().toString() + "/", true);
+                s_wm.server->send(302, "text/plain", "");
+                s_wm.server->client().stop();
+            });
+        }
     });
 
     s_state = NetState::Connecting;

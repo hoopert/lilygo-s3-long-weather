@@ -193,6 +193,7 @@ void setup() {
 void loop() {
     static uint32_t s_last_second = 0;
     static uint32_t s_last_heartbeat = 0;
+    static bool     s_forecast_seen = false;
 
     net_tick();
     buttons_tick();
@@ -201,7 +202,10 @@ void loop() {
 
     // A fresh forecast refreshes every screen, not just the visible one, so a
     // screen swiped to a moment later is already current.
-    if (weather_consume_update_flag()) screens_update_all();
+    if (weather_consume_update_flag()) {
+        s_forecast_seen = true;
+        screens_update_all();
+    }
 
     // Once a second is enough for the clock, the "x min ago" line and the live
     // values in the quick-settings sheet. The screens themselves are static
@@ -218,7 +222,10 @@ void loop() {
     // indistinguishable from one hung in an SPI transaction - and its fields
     // are the ones that matter for a dark screen: is the backlight up, and is
     // LVGL flushing.
-    if (now - s_last_heartbeat >= 5000) {
+    // Every 5s until the first forecast lands - that is when someone is
+    // reading the console - and once a minute after, which is enough to
+    // prove the loop is alive without burying everything else.
+    if (now - s_last_heartbeat >= (s_forecast_seen ? 60000u : 5000u)) {
         s_last_heartbeat = now;
         lv_mem_monitor_t mon;
         lv_mem_monitor(&mon);
