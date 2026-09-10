@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "display/backlight.h"
+#include "ui/pressure_logic.h"
 
 namespace {
 
@@ -107,12 +108,17 @@ String build_url() {
     url += "?latitude=" + String(s_lat, 4);
     url += "&longitude=" + String(s_lon, 4);
     url += "&current=temperature_2m,apparent_temperature,relative_humidity_2m,is_day,"
-           "weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure";
+           "weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl";
     url += "&hourly=temperature_2m,apparent_temperature,precipitation_probability,"
            "precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,"
-           "relative_humidity_2m,dew_point_2m,cloud_cover,visibility,uv_index,is_day";
+           "relative_humidity_2m,dew_point_2m,cloud_cover,visibility,uv_index,is_day,"
+           "pressure_msl";
     url += "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max";
-    url += "&timezone=auto&timeformat=unixtime&forecast_days=3";
+    // Sea-level pressure, not surface: the outlook bands and body-effect
+    // thresholds (design/logic.json) are written for MSL, and at altitude the
+    // surface reading is hundreds of hPa lower. past_hours gives the 24
+    // samples the trend and the pressure graph are drawn from.
+    url += "&timezone=auto&timeformat=unixtime&forecast_days=3&past_hours=24";
     if (s_imperial) {
         url += "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch";
     }
@@ -179,7 +185,7 @@ bool fetch_forecast() {
     next.temp      = current["temperature_2m"]      | NAN;
     next.apparent  = current["apparent_temperature"]| NAN;
     next.humidity  = current["relative_humidity_2m"]| NAN;
-    next.pressure  = current["surface_pressure"]    | NAN;
+    next.pressure  = current["pressure_msl"]        | NAN;
     next.wind      = current["wind_speed_10m"]      | NAN;
     next.gust      = current["wind_gusts_10m"]      | NAN;
     next.wind_dir  = current["wind_direction_10m"]  | 0;
@@ -217,6 +223,7 @@ bool fetch_forecast() {
     JsonArray h_vis    = hourly["visibility"];
     JsonArray h_uv     = hourly["uv_index"];
     JsonArray h_isday  = hourly["is_day"];
+    JsonArray h_pmsl   = hourly["pressure_msl"];
 
     uint8_t n = 0;
     for (size_t i = start; i < h_len && n < WX_HOURLY_FETCH; i++, n++) {
@@ -233,9 +240,24 @@ bool fetch_forecast() {
         s.humidity      = h_hum[i]   | NAN;
         s.dew_point     = h_dew[i]   | NAN;
         s.cloud_cover   = h_cloud[i] | 0;
+        s.pressure      = h_pmsl[i]  | NAN;
         s.is_day        = (h_isday[i] | 1) != 0;
     }
     next.hour_count = n;
+
+    // The pressure history: the 24 hours before `start` plus `start` itself,
+    // oldest first. A fresh forecast at 00:xx still has past_hours behind it,
+    // so this is normally the full 25; it is shorter only if the API returned
+    // less than it was asked for.
+    {
+        const size_t first = start >= (WX_PRESSURE_HISTORY - 1) ? start - (WX_PRESSURE_HISTORY - 1) : 0;
+        uint8_t k = 0;
+        for (size_t i = first; i <= start && i < h_len && k < WX_PRESSURE_HISTORY; i++, k++) {
+            next.pressure_history[k] = h_pmsl[i] | NAN;
+        }
+        next.pressure_history_count = k;
+        next.pressure_delta_3h = pressure_delta_3h(next.pressure_history, k, next.pressure);
+    }
 
     // UV and visibility have no "current" equivalent in the request, so the
     // hour we are standing in is the best available reading.
@@ -274,6 +296,9 @@ bool fetch_forecast() {
     s_update_flag = true;
     set_status(WxStatus::Ok);
     Serial.printf("[wx] %s: %.0f deg, %u hours\n", next.location, next.temp, next.hour_count);
+    Serial.printf("[wx] pressure %.1f hPa msl, 3h %+.1f (%u samples): %s\n",
+                  next.pressure, next.pressure_delta_3h, unsigned(next.pressure_history_count),
+                  pressure_outlook(next.pressure_delta_3h).word);
     return true;
 }
 

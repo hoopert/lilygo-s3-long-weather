@@ -45,6 +45,7 @@ struct WxHour {
     float   humidity;
     float   dew_point;
     int16_t cloud_cover;      // percent
+    float   pressure;         // hPa at mean sea level
     int16_t code;             // WMO code
     bool    is_day;
 };
@@ -57,7 +58,7 @@ struct WxData {
     float   temp;
     float   apparent;
     float   humidity;
-    float   pressure;
+    float   pressure;         // hPa at mean sea level (pressure_msl), never surface
     float   wind;
     float   gust;
     int16_t wind_dir;
@@ -73,9 +74,19 @@ struct WxData {
     time_t  sunset;
     int16_t precip_prob_max;
 
-    // Forward hours, starting at the current hour
+    // Forward hours, starting at the current hour. hours[0] is the hour we
+    // are living in; hour_count is how many of the WX_HOURLY_FETCH slots are
+    // filled (fewer only near the end of the forecast window).
     WxHour  hours[WX_HOURLY_FETCH];
     uint8_t hour_count;
+
+    // Hourly sea-level pressure ending at the current hour, oldest first:
+    // pressure_history[pressure_history_count - 1] is this hour, and the
+    // sample three back is what the 3-hour trend compares against. Fed by
+    // Open-Meteo's past_hours=24; NAN where a sample is missing.
+    float   pressure_history[WX_PRESSURE_HISTORY];
+    uint8_t pressure_history_count;
+    float   pressure_delta_3h;    // now - 3h ago, hPa; NAN until there is history
 
     // Where and when
     float   latitude;
