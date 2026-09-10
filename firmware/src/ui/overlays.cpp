@@ -24,6 +24,7 @@ OverlayKind s_kind = OverlayKind::None;
 
 // Live-updating widgets in Quick Settings.
 lv_obj_t *s_qs_bar = nullptr;        // the brightness bar
+lv_obj_t *s_qs_fill_clip = nullptr;  // clips the filled part to a square right edge
 lv_obj_t *s_qs_fill = nullptr;       // its filled part
 lv_obj_t *s_qs_auto_pill = nullptr;
 lv_obj_t *s_qs_updated = nullptr;
@@ -268,7 +269,7 @@ void overlays_dismiss() {
     lv_obj_del_async(s_root);
     s_root = nullptr;
     s_kind = OverlayKind::None;
-    s_qs_bar = s_qs_fill = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
+    s_qs_bar = s_qs_fill_clip = s_qs_fill = s_qs_auto_pill = s_qs_updated = s_qs_level = nullptr;
     s_qs_bl_status = s_qs_bars = s_qs_ssid = nullptr;
     s_bar_held = s_bar_dragging = false;
     s_hour_panel = s_hour_content = s_hour_neighbours = nullptr;
@@ -849,15 +850,15 @@ void overlays_show_pressure() {
 // ---------------------------------------------------------------------------
 namespace {
 
-constexpr int kQsRuleY      = 30;
-constexpr int kQsRow1Y      = 38;    // BRIGHTNESS eyebrow
-constexpr int kQsBarY       = 54;
-constexpr int kQsBarH       = 44;    // a fingertip
-constexpr int kQsBarW       = UI_WIDTH - LAYOUT_SAFE * 2;
-constexpr int kQsStatusY    = 104;
-constexpr int kQsRow2Y      = 128;   // FORECAST / WI-FI eyebrows
-constexpr int kQsValueY     = 144;
+constexpr int kQsRow1Y      = 14;    // BRIGHTNESS eyebrow, level, and the status line
+constexpr int kQsBarY       = 34;
+constexpr int kQsBarH       = 52;    // a fingertip, and a little
+constexpr int kQsAutoGap    = 10;    // between the bar's right end and the AUTO button
+constexpr int kQsBarW       = UI_WIDTH - LAYOUT_SAFE * 2 - kQsBarH - kQsAutoGap;   // 558
+constexpr int kQsRow2Y      = 112;   // FORECAST / WI-FI eyebrows
+constexpr int kQsValueY     = 130;
 constexpr int kQsWifiX      = 400;
+constexpr int kQsHandleY    = 170;
 constexpr int kQsDragSlop   = 6;     // px of travel before a press becomes a drag
 
 const uint8_t kWifiBarHeights[4] = {6, 10, 14, 18};
@@ -896,11 +897,18 @@ uint8_t level_for(float fraction) {
     return uint8_t(lroundf(float(lo) + (float(p[k]) - float(lo)) * t));
 }
 
+// The fill is a pill as wide as the level, drawn inside a plain rectangle
+// that clips it: its left end shows rounded, its right end is cut square at
+// the level - until the bar is full, when the pill is exactly the bar's width
+// and its own rounded right end shows, as if the whole thing were masked.
 void bar_show_level(uint8_t level) {
-    if (s_qs_fill) {
+    if (s_qs_fill && s_qs_fill_clip) {
+        const int r = kQsBarH / 2;
         int w = int(lroundf(fraction_for(level) * float(kQsBarW)));
-        if (w < kQsBarH) w = (level <= BL_LEVEL_MIN) ? 0 : kQsBarH;   // a pill cannot be thinner than it is tall
-        lv_obj_set_width(s_qs_fill, w);
+        if (level <= BL_LEVEL_MIN) w = 0;
+        else if (w < r) w = r;
+        lv_obj_set_width(s_qs_fill_clip, w);
+        lv_obj_set_width(s_qs_fill, w >= kQsBarW ? kQsBarW : w + r);
     }
     if (s_qs_level) {
         char buf[8];
@@ -985,22 +993,16 @@ void overlays_show_quick_settings() {
     lv_obj_t *root = make_backdrop();
     s_kind = OverlayKind::QuickSettings;
 
-    eyebrow(root, LAYOUT_SAFE, 8, "QUICK SETTINGS");
-    lv_obj_t *rule = theme_decor(root);
-    lv_obj_add_style(rule, &style_hairline, 0);
-    lv_obj_set_size(rule, UI_WIDTH - LAYOUT_SAFE * 2, 1);
-    lv_obj_set_pos(rule, LAYOUT_SAFE, kQsRuleY);
-
-    // --- Brightness ---------------------------------------------------------
+    // --- Brightness: eyebrow, level and status on one line, the bar under it
     eyebrow(root, LAYOUT_SAFE, kQsRow1Y, "BRIGHTNESS");
     s_qs_level = eyebrow(root, LAYOUT_SAFE + 96, kQsRow1Y, "", COL_ALUMINUM);
-    s_qs_auto_pill = pill(root, UI_WIDTH - LAYOUT_SAFE - 72, kQsRow1Y - 6, 72, 24, "AUTO",
-                          &font_micro, COL_GROUND, COL_TURQUOISE, auto_pill_cb);
+    s_qs_bl_status = eyebrow(root, 0, kQsRow1Y, "");
+    lv_obj_align(s_qs_bl_status, LV_ALIGN_TOP_RIGHT, -LAYOUT_SAFE, kQsRow1Y);
 
-    // The bar: a rivet track the full safe width, a fingertip tall, with the
-    // filled part in oat and eight hairlines marking nine divisions. It owns
-    // every touch that starts on it - no gesture bubbles out of a drag along
-    // it - and it does not bubble clicks to the backdrop either.
+    // The bar: a rivet track, a fingertip tall, with the filled part in oat and
+    // eight hairlines marking nine divisions. It owns every touch that starts
+    // on it - no gesture bubbles out of a drag along it - and it does not
+    // bubble clicks to the backdrop either.
     lv_obj_t *bar = lv_obj_create(root);
     lv_obj_remove_style_all(bar);
     lv_obj_set_pos(bar, LAYOUT_SAFE, kQsBarY);
@@ -1013,7 +1015,10 @@ void overlays_show_quick_settings() {
     lv_obj_add_event_cb(bar, bar_cb, LV_EVENT_ALL, nullptr);
     s_qs_bar = bar;
 
-    s_qs_fill = theme_decor(bar);
+    s_qs_fill_clip = theme_decor(bar);
+    lv_obj_set_pos(s_qs_fill_clip, 0, 0);
+    lv_obj_set_size(s_qs_fill_clip, 0, kQsBarH);
+    s_qs_fill = theme_decor(s_qs_fill_clip);
     lv_obj_set_pos(s_qs_fill, 0, 0);
     lv_obj_set_size(s_qs_fill, kQsBarH, kQsBarH);
     lv_obj_set_style_radius(s_qs_fill, kQsBarH / 2, 0);
@@ -1028,7 +1033,9 @@ void overlays_show_quick_settings() {
         lv_obj_set_style_bg_opa(div, LV_OPA_60, 0);
     }
 
-    s_qs_bl_status = eyebrow(root, LAYOUT_SAFE, kQsStatusY, "");
+    // AUTO: a round button the bar's height, a little clear of its right end.
+    s_qs_auto_pill = pill(root, LAYOUT_SAFE + kQsBarW + kQsAutoGap, kQsBarY, kQsBarH, kQsBarH,
+                          "AUTO", &font_micro, COL_GROUND, COL_TURQUOISE, auto_pill_cb);
 
     // --- Forecast -----------------------------------------------------------
     eyebrow(root, LAYOUT_SAFE, kQsRow2Y, "FORECAST");
@@ -1044,7 +1051,6 @@ void overlays_show_quick_settings() {
     lv_obj_add_event_cb(refresh, refresh_cb, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *refresh_ic = theme_label(refresh, &icons_sm, COL_TURQUOISE, ICON_REFRESH);
     lv_obj_center(refresh_ic);
-    // Placed after the first tick has set the age text (below).
 
     // --- Wi-Fi --------------------------------------------------------------
     eyebrow(root, kQsWifiX, kQsRow2Y, "WI-FI");
@@ -1053,6 +1059,14 @@ void overlays_show_quick_settings() {
     lv_obj_set_pos(s_qs_ssid, kQsWifiX + 34, kQsValueY);
     lv_obj_set_width(s_qs_ssid, UI_WIDTH - LAYOUT_SAFE - kQsWifiX - 34);
     lv_label_set_long_mode(s_qs_ssid, LV_LABEL_LONG_CLIP);
+
+    // The drag handle: the way out, said without words.
+    lv_obj_t *handle = theme_decor(root);
+    lv_obj_set_size(handle, 32, 3);
+    lv_obj_set_style_radius(handle, 2, 0);
+    lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(handle, lv_color_hex(COL_RIVET), 0);
+    lv_obj_set_pos(handle, (UI_WIDTH - 32) / 2, kQsHandleY);
 
     overlays_tick();
     lv_obj_update_layout(s_qs_updated);

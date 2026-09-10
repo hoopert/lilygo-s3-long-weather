@@ -34,7 +34,7 @@ constexpr int kRibbonH    = 30;
 constexpr int kPrecipY    = 112;   // chance of rain, and the top of the bar's range
 constexpr int kBarBottomY = 152;   // the bar grows up from here, 2px wide
 constexpr int kBarMaxH    = 24;    // 100% - height is prob * 0.24
-constexpr int kWindY      = 156;
+constexpr int kWindY      = 152;
 constexpr int kSepY       = 20;    // column hairlines run y20-y112
 constexpr int kSepH       = 92;
 
@@ -58,19 +58,21 @@ constexpr int kPlaceY     = 146;
 constexpr int kPlaceW     = 190;   // the place line must fit x10-x200
 
 // --- the seam (SPEC §1: "the one ornament") --------------------------------
-constexpr int kSeamX       = LAYOUT_STRIP_X - 1;   // 207
+constexpr int kSeamX       = LAYOUT_STRIP_X - 4;   // 204: the aluminum line
 constexpr int kSeamY       = 12;
 constexpr int kSeamH       = 148;                  // to y160
-constexpr int kRivetX      = LAYOUT_STRIP_X - 2;   // 206, a 2px dot astride the line
+constexpr int kRivetX      = LAYOUT_STRIP_X;       // 208: the rivets, a few px right of it
 constexpr int kRivetY0     = 16;
 constexpr int kRivetPitch  = 16;
 constexpr int kRivetCount  = 10;                   // y16 .. y160
 
 // --- Night Mode: a clock, and nothing else ----------------------------------
-// Centred on the screen. Digits have no descenders, so they sit high in the
-// font's line box; the nudge puts the digits themselves, not the box, in the
-// middle of the glass.
-constexpr int kClockNudgeY = 10;
+// The 128px cut's line box is 95px tall. Placed by eye on the glass: the
+// first try (top at y18) sat high, the second (centred, top at y52) sat low;
+// this is the middle of the two. Shifted right a little because the bezel on
+// this orientation's left edge is the wider one.
+constexpr int kClockY = 35;
+constexpr int kClockX = 12;
 
 struct HourWidgets {
     lv_obj_t *cell;        // invisible hit target, carries the index
@@ -412,8 +414,8 @@ lv_obj_t *create(lv_obj_t *parent) {
         const int cx = column_center(i);
 
         w.bg = theme_decor(day);
-        lv_obj_set_pos(w.bg, x, 4);
-        lv_obj_set_size(w.bg, LAYOUT_HOUR_COL_W - 1, 158);
+        lv_obj_set_pos(w.bg, x, 0);
+        lv_obj_set_size(w.bg, LAYOUT_HOUR_COL_W - 1, 172);   // hour label to wind, with room to spare
         lv_obj_set_style_radius(w.bg, 5, 0);
         lv_obj_set_style_bg_opa(w.bg, LV_OPA_TRANSP, 0);
         lv_obj_set_style_bg_color(w.bg, lv_color_hex(COL_SURFACE), 0);
@@ -481,7 +483,7 @@ lv_obj_t *create(lv_obj_t *parent) {
     s_ui.night_clock = theme_label(night, &font_clock, COL_NIGHT_HERO, "");
     lv_obj_set_width(s_ui.night_clock, UI_WIDTH);
     lv_obj_set_style_text_align(s_ui.night_clock, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(s_ui.night_clock, LV_ALIGN_CENTER, 0, kClockNudgeY);
+    lv_obj_set_pos(s_ui.night_clock, kClockX, kClockY);
 
     // --- root: shared between the layouts ------------------------------------
     s_ui.hero = theme_label(parent, &font_hero, COL_OAT, "--");
