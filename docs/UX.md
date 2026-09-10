@@ -125,6 +125,18 @@ turquoise while auto-dimming is engaged and outlined once an explicit level has
 taken over; a refresh button with the age of the data beside it; and the SSID,
 IP, signal strength and OTA hostname.
 
+## Night Mode
+
+After 23:00 local, in Auto, with nobody in front of the panel, the backlight
+is aiming at its deep-night floor and the Today screen cross-fades over 1500ms
+to a second layout on the same screen: the hero temperature in a dimmer oat,
+the condition in `aluminum-dim`, the clock alone on the place line, and the
+strip reduced to five wide columns of hour and temperature - no icons, ribbon,
+rain, wind, or page indicator. It is a nightlight that happens to know the
+temperature, not a screen. Any touch is a presence boost, which lifts the
+backlight target and brings the day layout back the same way. Manual and Off
+modes never enter it. See design/SPEC.md §5.
+
 ## States before there is data
 
 A wall-mounted display showing nothing is indistinguishable from a broken one,
@@ -148,7 +160,8 @@ what it is doing:
 | Overlay in | 220ms | slide up 24px + fade, ease-out |
 | Brightness ramp | 1500ms | cosine — deliberately imperceptible |
 | Wake from blank | 250ms | fast; waking should feel instant |
-| Press feedback | immediate | fill changes to `surface-hi` |
+| Press feedback | 90ms | scale to 0.97, fill changes to `surface-hi` |
+| Night Mode in / out | 1500ms | cross-fade, ease in-out, locked to the brightness ramp |
 
 Nothing else animates. The temperature does not count up, the ribbon does not
 draw itself in, and values do not slide. A panel you look at fifty times a day
@@ -159,13 +172,15 @@ should be still.
 Two things in [DESIGN_PROMPT.md](DESIGN_PROMPT.md) were changed during
 implementation, both for legibility at real size:
 
-1. **Wind is shown as cardinal text (`NW 8`) rather than a rotated arrow.** At
-   12px in a 43px column a rotated triangle is a smudge, and `NW` is both more
-   precise and faster to read. The arrow idea survives in the detail overlays,
-   where there is room for it.
+1. **Wind in the strip is an arrow and a number, not cardinal text.** The
+   first build shipped `NW 8` because a rotated triangle at 12px read as a
+   smudge; the design pass (design/SPEC.md §1) replaced it with the 11px
+   `navigation` glyph turned to where the wind is going, plus the integer
+   speed, and dropped the cardinal from the strip. The cardinal text survives
+   in Hour Detail, where there is room for it.
 2. **Hourly temperatures drop the degree sign.** A degree mark costs about 9px
-   in a 43px column and carries no information the 72px hero temperature has not
-   already established. Dropping it is what lets `100` fit.
+   in a 42px column and carries no information the 72px hero temperature has not
+   already established. Dropping it is what lets `100` fit (in the 24px cut).
 
 The degree mark on the hero *is* a separate label aligned to the number's cap
 height, as the brief asks — which also happens to be what stops a three-digit

@@ -84,6 +84,11 @@ void ui_handle_swipe(lv_dir_t dir);
 void ui_note_gesture();
 bool ui_gesture_recent();
 
+// The page indicator the manager drew on this screen's root, or nullptr before
+// screens_begin(). A screen that hides its chrome (Today's Night Mode) fades
+// this along with everything else; it must not delete or move it.
+lv_obj_t *screens_indicator(lv_obj_t *root);
+
 // Re-runs the active screen's update function. Cheap enough to call on every
 // data change; screens are expected to no-op when nothing they show moved.
 void screens_update_active();

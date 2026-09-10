@@ -55,10 +55,16 @@ LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micr
 // Layout. The panel is 640x180 in app space; these are the seams.
 // ---------------------------------------------------------------------------
 #define LAYOUT_SAFE        10
-#define LAYOUT_NOW_W       208            // left "Now" zone
-#define LAYOUT_STRIP_X     LAYOUT_NOW_W   // hourly strip origin
-#define LAYOUT_STRIP_W     (UI_WIDTH - LAYOUT_STRIP_X)
-#define LAYOUT_HOUR_COL_W  (LAYOUT_STRIP_W / WX_HOURLY_SLOTS)
+#define LAYOUT_NOW_W       208            // left "Now" zone; the seam sits at x207
+#define LAYOUT_STRIP_X     LAYOUT_NOW_W   // hourly strip zone origin
+// The drawn columns inset 2px from the zone split so ten 42px columns end at
+// x630, the safe line, rather than running under the masked corner at 638.
+#define LAYOUT_COLUMNS_X   (LAYOUT_STRIP_X + 2)
+#define LAYOUT_HOUR_COL_W  42
+#define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 420
+// Night Mode: the same 420px carries five wide columns (design/SPEC.md §5).
+#define LAYOUT_NIGHT_COLS  5
+#define LAYOUT_NIGHT_COL_W (LAYOUT_STRIP_W / LAYOUT_NIGHT_COLS)   // 84
 #define LAYOUT_HEADER_H    22
 
 void theme_init();

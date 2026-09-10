@@ -18,10 +18,10 @@ deliberately ready for more screens than it currently ships with.
 │  Partly Cloudy               │ ───────╯      ╰────╮      trend ribbon                              │
 │  FEELS 71° · H 84° L 58°     │                    ╰──────────╮                                     │
 │                              │                               ╰─────────────────────────            │
-│  DENVER · 2:35 PM · 4 MIN AGO│              20%   45%   60%   30%                                  │
-│                              │ NW 8  NW 9   N 12  N 14  NE 9  NE 7   E 5                           │
+│  DENVER · 2:35P · 4 MIN AGO  │              20%   45%   60%   30%                                  │
+│                              │  ↗8   ↗9    ↑12   ↑14   ↖9    ↖7    ←5                              │
 └──────────────────────────────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
-   ← 208px "Now" zone ─────────→  ← ten 43px hour columns ──────────────────────────────────────→
+   ← 208px "Now" zone ─────────→  ← ten 42px hour columns from x210 ─────────────────────────────→
 ```
 
 ## Install

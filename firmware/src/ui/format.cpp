@@ -35,6 +35,14 @@ void fmt_clock(time_t utc, long offset, char *out, size_t len) {
     snprintf(out, len, "%d:%02d %s", h12, m, suffix);
 }
 
+void fmt_clock_compact(time_t utc, long offset, char *out, size_t len) {
+    int h, m;
+    local_hm(utc, offset, h, m);
+    int h12 = h % 12;
+    if (h12 == 0) h12 = 12;
+    snprintf(out, len, "%d:%02d%c", h12, m, (h < 12) ? 'A' : 'P');
+}
+
 void fmt_temp(float value, char *out, size_t len) {
     if (isnan(value)) { snprintf(out, len, "--°"); return; }
     snprintf(out, len, "%d°", int(lroundf(value)));

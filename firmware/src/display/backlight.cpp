@@ -265,6 +265,9 @@ void backlight_toggle_off() {
 }
 
 bool          backlight_is_off()        { return s_mode == BacklightMode::Off; }
+bool          backlight_is_deep_night() {
+    return s_mode == BacklightMode::Auto && s_target <= BL_LEVEL_DEEPNIGHT;
+}
 BacklightMode backlight_mode()          { return s_mode; }
 uint8_t       backlight_target_level()  { return s_target; }
 uint8_t       backlight_current_level() { return static_cast<uint8_t>(lroundf(s_current)); }
