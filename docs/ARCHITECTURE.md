@@ -70,7 +70,7 @@ s_disp_drv.hor_res      = PANEL_WIDTH;   // 180 - the physical panel
 s_disp_drv.ver_res      = PANEL_HEIGHT;  // 640
 s_disp_drv.sw_rotate    = 1;
 s_disp_drv.rotated      = UI_ROTATION;    // LV_DISP_ROT_270 - config.h
-s_disp_drv.full_refresh = 1;             // required alongside sw_rotate
+s_disp_drv.full_refresh = 0;             // must be 0 with sw_rotate - see below
 ```
 
 `hor_res` and `ver_res` describe the **panel**, not the UI. LVGL then reports
