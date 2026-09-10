@@ -102,7 +102,7 @@ under your thumb instead of after you let go.
 
 | # | Name | Contents |
 |---|---|---|
-| 0 | **Today** (home) | Current conditions on the left; on the right, the next eight hours as hour, glyph and temperature, each a tap away from Hour Detail. The strip was built denser (a trend ribbon, rain bars, wind arrows, ten columns) and simplified after the first flash: it was too crammed to read across a trailer. |
+| 0 | **Today** (home) | Current conditions on the left; on the right, the next eight hours - hour, glyph, temperature, the trend ribbon, chance of rain with its bar, wind - each column a tap away from Hour Detail. The design drew ten columns; eight was the first change asked for on the glass. |
 | +1 | **Forecast** (swipe left) | Ten days in ten columns: weekday, daytime glyph, high on the colour ramp, low, chance of rain when it matters. Today is on a raised slab. |
 | −1 | **System** (swipe right) | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
 
@@ -159,13 +159,13 @@ the drag handle at the bottom says so.
 
 After 23:00 local, in Auto, with nobody in front of the panel, the backlight
 is aiming at its deep-night floor and the Today screen cross-fades over 1500ms
-to a second layout on the same screen: the hero temperature in a dimmer oat,
-the condition in `aluminum-dim`, the clock alone on the place line, and the
-strip reduced to five wide columns of hour and temperature - no icons, ribbon,
-rain, wind, or page indicator. It is a nightlight that happens to know the
-temperature, not a screen. Any touch is a presence boost, which lifts the
-backlight target and brings the day layout back the same way. Manual and Off
-modes never enter it. See design/SPEC.md §5.
+to a clock: 128px digits in dim oat, `h:mm`, centred on an otherwise empty
+screen, at backlight 16 - the dimmest level this glass can show legibly. It
+is a nightlight that knows the time, not a screen. Any touch is a presence
+boost, which lifts the backlight target and brings the weather back the same
+way. Manual and Off modes never enter it. (The design's §5 night layout, a
+dimmer weather strip, was built and replaced by the clock after the third
+flash.)
 
 ## States before there is data
 

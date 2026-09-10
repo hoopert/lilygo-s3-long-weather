@@ -20,7 +20,9 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Strip geometry | Eight columns, each just an hour, a 32px glyph and a temperature, centred in the strip's height; the last column ends short of the right edge. `NOW` in turquoise on a raised slab. No ribbon, rain or wind rows: those live in Hour Detail. |
+| Strip geometry | Eight 52px columns; the last one ends short of the right edge. `NOW` in turquoise on a raised slab. |
+| Rain | A percentage in turquoise **and** a thin bar under it, taller with the chance. Both absent below 10%. |
+| Wind | A small arrow and a number in sky blue. The arrow is one of eight compass glyphs and points where the wind is *going* (a north wind points down). Absent below 3 mph. |
 | Hourly temperatures | 30px, on the colour ramp, no degree sign. A three-digit value (100°F) drops to a smaller cut and still fits its column. |
 | Forecast screen | Swipe left from Today: ten day columns - `TODAY` then weekdays, a daytime glyph, the high in 30px on the ramp, the low beneath in grey, a turquoise rain percentage where it is 10% or more. Swipe right brings Today back. |
 | Now zone | Big temperature with the degree mark up by its cap and a small `F` below that; icon top-right of the zone; condition; `FEELS 71° · H 84° L 58°`; `DENVER · 2:35P · 4 MIN AGO`. The last line fits with a long town name. |
@@ -58,8 +60,8 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Entry | Over about 1.5s the strip's glyphs fade away and four wide columns of hour + temperature take their place; the big temperature goes a duller oat; the clock alone on the place line; no page indicator. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). |
-| Exit | Any touch brings the day layout back the same way. |
+| Entry | Over about 1.5s the whole weather screen fades out and a big clock fades in: `h:mm` in 128px dim oat, centred, nothing else. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). |
+| Exit | Any touch brings the weather back the same way. |
 | Not triggered | A manual brightness (slider or BOOT button) never enters it, however dark. |
 
 ## If something is wrong
