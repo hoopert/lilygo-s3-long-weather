@@ -227,3 +227,12 @@ one of eight compass glyphs in `icons_xs`; press feedback is the fill change
 alone. The portal's synchronous network scan (13s with a phone attached)
 is now preloaded and asynchronous, and a forecast transfer that drops
 mid-body is retried within seconds rather than after a minute.
+
+Second flash: the drops were the parser, not the network - parsing straight
+from the TLS stream ran slower than the server's patience once a day of
+history was in the body. The body is now read whole into PSRAM and parsed
+after; the hourly request drops dew point and cloud cover, which nothing
+shows any more. The console is quieter: WiFiManager's log is off in favour
+of `[net]` lines, the captive-portal probe URLs have handlers so the core
+stops logging them, the heartbeat slows to once a minute after the first
+forecast, and Jost gains U+00D7 for `640 × 180`.

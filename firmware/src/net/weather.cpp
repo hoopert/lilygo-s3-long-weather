@@ -43,6 +43,47 @@ PsramAllocator s_allocator;
 
 void set_status(WxStatus s) { s_status = s; }
 
+// A response body in PSRAM. data is null when the read failed; len is then
+// how far it got, which is the number worth logging.
+struct Body {
+    char  *data;
+    size_t len;
+};
+
+// Reads until the server closes the connection (HTTP/1.0, so it will) or
+// nothing arrives for WX_HTTP_TIMEOUT_MS. Grows the buffer in 16KB steps up
+// to WX_BODY_MAX; a forecast is ~30KB.
+Body read_body(WiFiClient &stream) {
+    size_t cap = 16 * 1024, len = 0;
+    char *buf = static_cast<char *>(heap_caps_malloc(cap, MALLOC_CAP_SPIRAM));
+    if (buf == nullptr) return {nullptr, 0};
+
+    uint32_t last_data_ms = millis();
+    for (;;) {
+        const int avail = stream.available();
+        if (avail > 0) {
+            if (len + size_t(avail) + 1 > cap) {
+                cap = cap * 2 > WX_BODY_MAX ? WX_BODY_MAX : cap * 2;
+                if (len + size_t(avail) + 1 > cap) break;   // over the cap: give up
+                char *grown = static_cast<char *>(heap_caps_realloc(buf, cap, MALLOC_CAP_SPIRAM));
+                if (grown == nullptr) break;
+                buf = grown;
+            }
+            const int n = stream.read(reinterpret_cast<uint8_t *>(buf + len), avail);
+            if (n > 0) { len += size_t(n); last_data_ms = millis(); }
+            continue;
+        }
+        if (!stream.connected()) {
+            buf[len] = '\0';
+            return {buf, len};
+        }
+        if (millis() - last_data_ms > WX_HTTP_TIMEOUT_MS) break;
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+    heap_caps_free(buf);
+    return {nullptr, len};
+}
+
 // ---------------------------------------------------------------------------
 // IP geolocation
 //
@@ -111,8 +152,7 @@ String build_url() {
            "weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl";
     url += "&hourly=temperature_2m,apparent_temperature,precipitation_probability,"
            "precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,"
-           "relative_humidity_2m,dew_point_2m,cloud_cover,visibility,uv_index,is_day,"
-           "pressure_msl";
+           "relative_humidity_2m,visibility,uv_index,is_day,pressure_msl";
     url += "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max";
     // Sea-level pressure, not surface: the outlook bands and body-effect
     // thresholds (design/logic.json) are written for MSL, and at altitude the
@@ -157,13 +197,26 @@ bool fetch_forecast() {
         return false;
     }
 
-    const int content_length = http.getSize();   // -1 when the server did not say
-    JsonDocument doc(&s_allocator);
-    const DeserializationError err = deserializeJson(doc, http.getStream());
+    // The body is read whole, as fast as the radio delivers it, and parsed
+    // afterwards. Parsing straight from the TLS stream was the first build's
+    // way, and it worked while the response was small; with a day of history
+    // added the parse ran slower than the server's patience, the connection
+    // was reset mid-body, and the parser reported IncompleteInput at about
+    // the same point every time.
+    Body body = read_body(http.getStream());
     http.end();
+    if (body.data == nullptr) {
+        Serial.printf("[wx] body read failed after %u bytes\n", unsigned(body.len));
+        set_status(WxStatus::ErrorNetwork);
+        return false;
+    }
+
+    JsonDocument doc(&s_allocator);
+    const DeserializationError err = deserializeJson(doc, body.data, body.len);
+    heap_caps_free(body.data);
     if (err) {
-        Serial.printf("[wx] parse failed: %s (HTTP %d, content-length %d)\n",
-                      err.c_str(), code, content_length);
+        Serial.printf("[wx] parse failed: %s (HTTP %d, %u bytes)\n",
+                      err.c_str(), code, unsigned(body.len));
         set_status(WxStatus::ErrorParse);
         return false;
     }
@@ -218,8 +271,6 @@ bool fetch_forecast() {
     JsonArray h_gust   = hourly["wind_gusts_10m"];
     JsonArray h_dir    = hourly["wind_direction_10m"];
     JsonArray h_hum    = hourly["relative_humidity_2m"];
-    JsonArray h_dew    = hourly["dew_point_2m"];
-    JsonArray h_cloud  = hourly["cloud_cover"];
     JsonArray h_vis    = hourly["visibility"];
     JsonArray h_uv     = hourly["uv_index"];
     JsonArray h_isday  = hourly["is_day"];
@@ -238,8 +289,6 @@ bool fetch_forecast() {
         s.gust          = h_gust[i]  | NAN;
         s.wind_dir      = h_dir[i]   | 0;
         s.humidity      = h_hum[i]   | NAN;
-        s.dew_point     = h_dew[i]   | NAN;
-        s.cloud_cover   = h_cloud[i] | 0;
         s.pressure      = h_pmsl[i]  | NAN;
         s.is_day        = (h_isday[i] | 1) != 0;
     }

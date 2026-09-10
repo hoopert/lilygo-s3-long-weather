@@ -96,6 +96,7 @@
 #define WX_QUICK_RETRIES      2          // immediate retries of a dropped transfer...
 #define WX_QUICK_RETRY_S      4          // ...this far apart, before the slow cadence
 #define WX_HTTP_TIMEOUT_MS    12000
+#define WX_BODY_MAX           (128 * 1024)  // a forecast body is ~30KB; this is the ceiling
 
 // ---------------------------------------------------------------------------
 // Backlight and auto-dimming

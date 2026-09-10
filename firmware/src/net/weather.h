@@ -43,8 +43,6 @@ struct WxHour {
     float   gust;
     int16_t wind_dir;         // degrees the wind is coming FROM
     float   humidity;
-    float   dew_point;
-    int16_t cloud_cover;      // percent
     float   pressure;         // hPa at mean sea level
     int16_t code;             // WMO code
     bool    is_day;
