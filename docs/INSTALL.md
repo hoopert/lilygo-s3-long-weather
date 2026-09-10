@@ -185,12 +185,25 @@ Jekyll is not involved at any point. Jekyll processing only applies to
 branch-sourced Pages sites; an Actions-sourced deploy serves the uploaded
 artifact verbatim, so there is nothing to disable and no `.nojekyll` needed.
 
-To cut a release that `tools/flash.sh` can download from:
+### Versions
+
+There is one version string and it comes from git. `tools/version.py` runs
+`git describe --tags --always --dirty` and feeds the result to everything
+that shows a version: the panel's System footer (injected as
+`FIRMWARE_VERSION` when PlatformIO builds), the installer page's manifest,
+and the release name. A tagged commit reads `1.1.0`; three commits past it
+reads `1.1.0-3-gabc1234`; a local build with uncommitted changes adds
+`-dirty`. Nothing is bumped by hand.
+
+To cut a release, which is also what `tools/flash.sh` downloads:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
+
+The tag builds the binary, attaches it to a GitHub Release, and republishes
+the installer page at that version.
 
 ---
 

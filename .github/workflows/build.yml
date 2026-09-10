@@ -39,7 +39,11 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      # Full history: the version is `git describe --tags`, which needs the
+      # tags and the commits back to the last one.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
@@ -61,14 +65,12 @@ jobs:
         working-directory: firmware
         run: pio run
 
+      # The same string the firmware was just built with (tools/version.py
+      # runs inside `pio run` too), so the installer page, the release and
+      # the panel's own footer never disagree.
       - name: Determine version
         id: version
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=0.0.0+${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "version=$(python3 tools/version.py)" >> "$GITHUB_OUTPUT"
 
       # One file, flashed at offset 0. Splitting bootloader / partition table /
       # app across three offsets is the single most common way an install goes

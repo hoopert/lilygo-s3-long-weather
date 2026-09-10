@@ -15,9 +15,13 @@
 #include "ui/icons.h"
 #include "ui/theme.h"
 
-// Bumped by hand. Shown on this screen so a photo of the panel is enough to
-// tell which build is running on it.
-#define FIRMWARE_VERSION "1.0.0"
+// Injected by tools/version.py from `git describe` at build time - "1.1.0"
+// on a tagged release, "1.1.0-3-gabc1234" three commits past one - so a
+// photo of the panel says exactly which build is on it. The fallback is for
+// a build outside PlatformIO.
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "unknown"
+#endif
 
 // The System drawer, to design/SPEC.md §1B: a title bar carrying the memory
 // line and the one action, a rivet-dotted rule, and a three-column grid of
