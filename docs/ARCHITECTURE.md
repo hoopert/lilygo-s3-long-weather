@@ -231,6 +231,7 @@ and committed, so a normal build needs no Node toolchain.
 | `font_label` | Jost\* Medium | 15 | full ASCII |
 | `font_micro` | Jost\* Medium | 12 | full ASCII |
 | `icons_lg` | Material Symbols Rounded | 56 | 14 weather glyphs |
+| `icons_md` | Material Symbols Rounded | 32 | the hourly strip and the Forecast screen |
 | `icons_sm` | Material Symbols Rounded | 20 | weather + chrome |
 | `icons_xs` | Material Symbols Rounded | 11 | wind arrow, refresh - inline with Micro |
 | `icons_ui` | Material Symbols Rounded | 16 | chrome |

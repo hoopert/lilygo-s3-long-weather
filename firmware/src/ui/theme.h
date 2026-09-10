@@ -47,6 +47,7 @@ LV_FONT_DECLARE(font_body);    // Jost* Regular  20
 LV_FONT_DECLARE(font_label);   // Jost* Medium   15
 LV_FONT_DECLARE(font_micro);   // Jost* Medium   12, tracked, uppercase
 LV_FONT_DECLARE(icons_lg);     // Material Symbols Rounded 56
+LV_FONT_DECLARE(icons_md);     // Material Symbols Rounded 32 - the hourly strip and the Forecast screen
 LV_FONT_DECLARE(icons_sm);     // Material Symbols Rounded 20
 LV_FONT_DECLARE(icons_ui);     // Material Symbols Rounded 16
 LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micro text
@@ -60,11 +61,13 @@ LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micr
 // The drawn columns inset 2px from the zone split so ten 42px columns end at
 // x630, the safe line, rather than running under the masked corner at 638.
 #define LAYOUT_COLUMNS_X   (LAYOUT_STRIP_X + 2)
-#define LAYOUT_HOUR_COL_W  42
-#define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 420
-// Night Mode: the same 420px carries five wide columns (design/SPEC.md §5).
-#define LAYOUT_NIGHT_COLS  5
-#define LAYOUT_NIGHT_COL_W (LAYOUT_STRIP_W / LAYOUT_NIGHT_COLS)   // 84
+#define LAYOUT_HOUR_COL_W  52                                     // eight columns end at x626
+#define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 416
+// Night Mode: the same width carries every other hour in wide columns.
+#define LAYOUT_NIGHT_COLS  (WX_HOURLY_SLOTS / 2)
+#define LAYOUT_NIGHT_COL_W (LAYOUT_STRIP_W / LAYOUT_NIGHT_COLS)   // 104
+// The Forecast screen: ten day columns across the safe width.
+#define LAYOUT_DAY_COL_W   ((UI_WIDTH - LAYOUT_SAFE * 2) / WX_DAILY_DAYS)   // 62
 #define LAYOUT_HEADER_H    22
 
 void theme_init();

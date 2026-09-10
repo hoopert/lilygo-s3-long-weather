@@ -88,7 +88,8 @@
 #define WX_DEFAULT_LON   0.0f
 #define WX_DEFAULT_UNITS_IMPERIAL true   // fahrenheit + mph + inches
 
-#define WX_HOURLY_SLOTS       10         // hours shown on the Today strip
+#define WX_HOURLY_SLOTS       8          // hours shown on the Today strip
+#define WX_DAILY_DAYS         10         // days on the Forecast screen
 #define WX_HOURLY_FETCH       36         // hours parsed and kept in memory
 #define WX_PRESSURE_HISTORY   25         // hourly MSL pressure, -24h .. now, for the trend
 #define WX_REFRESH_INTERVAL_S (10 * 60)  // successful refresh cadence
@@ -96,7 +97,7 @@
 #define WX_QUICK_RETRIES      2          // immediate retries of a dropped transfer...
 #define WX_QUICK_RETRY_S      4          // ...this far apart, before the slow cadence
 #define WX_HTTP_TIMEOUT_MS    12000
-#define WX_BODY_MAX           (128 * 1024)  // a forecast body is ~30KB; this is the ceiling
+#define WX_BODY_MAX           (256 * 1024)  // a forecast body is ~35KB; this is the ceiling, in PSRAM
 
 // ---------------------------------------------------------------------------
 // Backlight and auto-dimming
@@ -116,8 +117,10 @@
 #define BL_LEVEL_DAY      255    // full sun through the trailer windows
 #define BL_LEVEL_DUSK     140    // civil twilight
 #define BL_LEVEL_NIGHT     45    // evening, lights on inside
-#define BL_LEVEL_DEEPNIGHT 12    // small hours - a nightlight, not a screen
-#define BL_LEVEL_MIN        4    // never fully dark unless explicitly off
+// Measured on the glass: 12 shows nothing, 14 is the first level that
+// produces light, 16 is legible, 18 is easy to read.
+#define BL_LEVEL_DEEPNIGHT 16    // small hours - a nightlight, not a screen
+#define BL_LEVEL_MIN       14    // never fully dark unless explicitly off
 
 // Minutes of ramp either side of sunrise/sunset. The transition is slow enough
 // that you never catch it happening.

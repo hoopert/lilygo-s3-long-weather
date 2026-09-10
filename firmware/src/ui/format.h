@@ -18,6 +18,7 @@ void fmt_temp(float value, char *out, size_t len);                  // "72°"
 void fmt_temp_plain(float value, char *out, size_t len);             // "72"
 void fmt_temp_signed(float value, char *out, size_t len);           // "-4°"
 void fmt_relative(uint32_t seconds_ago, char *out, size_t len);     // "3 MIN AGO"
+void fmt_weekday(time_t utc, long offset, char *out, size_t len);   // "MON"
 
 // True when the timestamp falls inside the hour we are currently living in.
 bool is_current_hour(time_t utc, long offset);

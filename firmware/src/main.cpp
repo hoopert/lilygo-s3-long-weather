@@ -27,6 +27,7 @@
 #include "net/weather.h"
 #include "ui/overlays.h"
 #include "ui/screen_manager.h"
+#include "ui/screens/screen_forecast.h"
 #include "ui/screens/screen_system.h"
 #include "ui/screens/screen_today.h"
 #include "ui/startup.h"
@@ -167,6 +168,7 @@ void setup() {
     // Screen order is swipe order. Adding a third screen is one more line here
     // plus its own file - see docs/ARCHITECTURE.md.
     screens_register(screen_today_def());
+    screens_register(screen_forecast_def());
     screens_register(screen_system_def());
     screens_begin();
 

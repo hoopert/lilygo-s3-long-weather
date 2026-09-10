@@ -48,6 +48,15 @@ struct WxHour {
     bool    is_day;
 };
 
+struct WxDay {
+    time_t  time;             // local midnight, as unix UTC
+    float   temp_max;
+    float   temp_min;
+    int16_t precip_prob_max;  // percent
+    float   wind_max;
+    int16_t code;             // WMO code for the day
+};
+
 struct WxData {
     bool   valid;
     time_t fetched_at;
@@ -71,6 +80,10 @@ struct WxData {
     time_t  sunrise;          // unix, UTC
     time_t  sunset;
     int16_t precip_prob_max;
+
+    // The daily forecast, days[0] being today in the resolved timezone.
+    WxDay   days[WX_DAILY_DAYS];
+    uint8_t day_count;
 
     // Forward hours, starting at the current hour. hours[0] is the hour we
     // are living in; hour_count is how many of the WX_HOURLY_FETCH slots are

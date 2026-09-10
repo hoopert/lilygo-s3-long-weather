@@ -30,12 +30,14 @@ because it was unimportant.
 | **Tap** | The panel, or anywhere else, with an overlay open | Close it |
 | **Swipe right** (finger left → right) | Today | Opens the System drawer, sliding in from the left |
 | **Swipe left** (finger right → left) | System | Puts the drawer away, sliding out to the left |
+| **Swipe left** (finger right → left) | Today | Opens the ten-day Forecast, sliding in from the right |
+| **Swipe right** (finger left → right) | Forecast | Puts it away, sliding out to the right |
 | **Swipe down** | Any screen | Quick Settings sheet drops from the top edge |
 | **Swipe up** | Quick Settings | Close it (so does a tap on the dimmed content below) |
 | **Swipe up / down** | Hour, Now or Pressure detail | Close it |
 | **Long press (700ms)** | Anywhere | Force a forecast refresh |
 
-Anything not in the table is dropped: a swipe left on Today does nothing, a
+Anything not in the table is dropped: a swipe left on Forecast does nothing, a
 swipe right on System does nothing, a sideways drag on Quick Settings adjusts
 the brightness slider and nothing else.
 
@@ -100,10 +102,11 @@ under your thumb instead of after you let go.
 
 | # | Name | Contents |
 |---|---|---|
-| 1 | **Today** | Current conditions and the next ten hours |
-| 2 | **System** | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
+| 0 | **Today** (home) | Current conditions on the left; on the right, the next eight hours as hour, glyph and temperature, each a tap away from Hour Detail. The strip was built denser (a trend ribbon, rain bars, wind arrows, ten columns) and simplified after the first flash: it was too crammed to read across a trailer. |
+| +1 | **Forecast** (swipe left) | Ten days in ten columns: weekday, daytime glyph, high on the colour ramp, low, chance of rain when it matters. Today is on a raised slab. |
+| −1 | **System** (swipe right) | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
 
-Two screens is the minimum that makes a swipe meaningful. A page indicator sits
+Three screens on one strip, home in the middle. A page indicator sits
 at the bottom centre of every screen — a short turquoise bar for the current
 position, small rivet-grey dots for the others — drawn as a position in a strip
 rather than as something pressable.
