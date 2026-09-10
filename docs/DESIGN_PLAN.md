@@ -60,7 +60,12 @@ temperature size.
 - **Done when:** builds; hourly temperatures render at 30px with the 24px
   fallback at three digits; everything else pixel-identical.
 
-### Phase 2 - Today (§1) and Night Mode (§5)
+### Phase 2 - Today (§1) and Night Mode (§5) - merged
+
+Implementation notes: the night strip shows every other hour so its five
+columns span the same ten hours as the day strip; the page indicator is
+found through `screens_indicator()` and fades with the day chrome; the place
+line is untracked so `LOS ANGELES · 2:35P · 4 MIN AGO` still fits in 190px.
 
 The most visible phase.
 

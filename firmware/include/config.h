@@ -148,6 +148,9 @@
 #define UI_SCREEN_ANIM_MS    280
 #define UI_OVERLAY_ANIM_MS   220
 #define UI_VALUE_FADE_MS     400
+// Night Mode cross-fade (design/SPEC.md §5). Tied to the backlight fade so
+// the layout and the brightness arrive together.
+#define UI_NIGHT_FADE_MS     BL_FADE_MS
 
 // ---------------------------------------------------------------------------
 // Time

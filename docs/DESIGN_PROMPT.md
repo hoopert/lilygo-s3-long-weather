@@ -311,8 +311,8 @@ Two constraints on those numbers, because they have costs the artboard does not 
   a font cut (`tools/build_fonts.sh`) and spending flash. Change a size when the design
   needs it, but not incidentally — and if you add a size, say so explicitly in `SPEC.md`
   so the cut gets generated.
-- **The hour columns are 43px wide** (`LAYOUT_STRIP_W / 10`). Anything you place in one
-  has to hold three digits at that width. This is why the hourly temperatures currently
+- **The hour columns are 42px wide** (`LAYOUT_HOUR_COL_W`, ten from x210 to the x630
+  safe line). Anything you place in one has to hold three digits at that width. This is why the hourly temperatures currently
   drop their degree sign.
 
 If your design changes something these keys cannot express — a new element, a different

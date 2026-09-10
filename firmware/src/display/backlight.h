@@ -63,3 +63,9 @@ BacklightMode backlight_mode();
 // Both 0-255 in perceptual units, not PWM duty.
 uint8_t backlight_target_level();
 uint8_t backlight_current_level();
+
+// True while the auto-dimmer is aiming at the deep-night floor: Auto mode, the
+// small hours, and nobody in front of the panel. The Today screen swaps to its
+// Night Mode layout on this and back the moment it clears - a presence boost
+// lifts the target, so a touch is what ends the night (design/SPEC.md §5).
+bool backlight_is_deep_night();

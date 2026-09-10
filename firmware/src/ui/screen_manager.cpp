@@ -182,6 +182,13 @@ int screens_count()   { return s_count; }
 int screens_current() { return s_current; }
 int screens_current_position() { return s_started ? s_defs[s_current].position : 0; }
 
+lv_obj_t *screens_indicator(lv_obj_t *root) {
+    for (int i = 0; i < s_count; i++) {
+        if (s_roots[i] == root) return s_indicators[i];
+    }
+    return nullptr;
+}
+
 void screens_update_active() {
     if (!s_started) return;
     if (s_defs[s_current].update) s_defs[s_current].update(s_roots[s_current]);

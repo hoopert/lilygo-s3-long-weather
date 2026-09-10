@@ -13,6 +13,7 @@
 
 void fmt_hour(time_t utc, long offset, char *out, size_t len);      // "2PM"
 void fmt_clock(time_t utc, long offset, char *out, size_t len);     // "2:35 PM"
+void fmt_clock_compact(time_t utc, long offset, char *out, size_t len); // "2:35P" - the place line has no room for the M
 void fmt_temp(float value, char *out, size_t len);                  // "72°"
 void fmt_temp_plain(float value, char *out, size_t len);             // "72"
 void fmt_temp_signed(float value, char *out, size_t len);           // "-4°"
