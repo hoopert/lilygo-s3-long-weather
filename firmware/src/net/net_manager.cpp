@@ -40,9 +40,12 @@ void load_prefs() {
     // first boot prints "nvs_open failed: NOT_FOUND", which is alarming and
     // means nothing. Opening read-write creates the namespace instead.
     s_prefs.begin("airstream", false);
-    s_lat      = s_prefs.getFloat("lat", WX_DEFAULT_LAT);
-    s_lon      = s_prefs.getFloat("lon", WX_DEFAULT_LON);
-    s_imperial = s_prefs.getBool("imperial", WX_DEFAULT_UNITS_IMPERIAL);
+    // isKey() first: the getters log an error-level line for a missing key
+    // even though they return the default, so a clean first boot would print
+    // three of them right where someone is looking for a real problem.
+    s_lat      = s_prefs.isKey("lat")      ? s_prefs.getFloat("lat")     : WX_DEFAULT_LAT;
+    s_lon      = s_prefs.isKey("lon")      ? s_prefs.getFloat("lon")     : WX_DEFAULT_LON;
+    s_imperial = s_prefs.isKey("imperial") ? s_prefs.getBool("imperial") : WX_DEFAULT_UNITS_IMPERIAL;
     s_prefs.end();
 
     if (s_lat != 0.0f) snprintf(s_lat_buf, sizeof(s_lat_buf), "%.4f", s_lat);

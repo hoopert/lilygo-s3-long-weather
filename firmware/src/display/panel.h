@@ -18,6 +18,21 @@ void panel_init();
 void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                        const uint16_t *pixels);
 
+// Fills the whole panel: rows [0, split) in `top`, rows [split, 640) in
+// `bottom`. Talks to the panel directly with no LVGL involved, which is what
+// makes it a useful diagnostic - if this shows and the UI does not, the fault
+// is LVGL-side; if this is black too, it is the driver or the backlight.
+// Colours are RGB565 in the panel's byte order (use panel_rgb565()).
+void panel_fill_split(uint16_t top, uint16_t bottom, uint16_t split);
+
+// RGB565 in the byte order the panel expects on the wire.
+uint16_t panel_rgb565(uint8_t r, uint8_t g, uint8_t b);
+
+// How many times panel_push_pixels() has been called since boot. Exposed so
+// the heartbeat can tell a "LVGL never flushes" fault from a "flushes land but
+// nothing shows" fault without a debugger.
+uint32_t panel_flush_count();
+
 // Panel sleep. The backlight is controlled separately - see backlight.h.
 void panel_sleep();
 void panel_wake();

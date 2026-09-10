@@ -3,12 +3,14 @@
 #include <Arduino.h>
 #include <string.h>
 #include "driver/spi_master.h"
+#include <esp_heap_caps.h>
 
 #include "pins.h"
 
 namespace {
 
 spi_device_handle_t s_spi = nullptr;
+uint32_t s_flush_count = 0;
 
 struct LcdCmd {
     uint8_t cmd;
@@ -102,6 +104,7 @@ void panel_init() {
 void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                        const uint16_t *pixels) {
     if (pixels == nullptr || w == 0 || h == 0) return;
+    s_flush_count++;
 
     set_address_window(x, y, x + w - 1, y + h - 1);
 
@@ -136,6 +139,50 @@ void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
     }
 
     cs_high();
+}
+
+uint32_t panel_flush_count() { return s_flush_count; }
+
+uint16_t panel_rgb565(uint8_t r, uint8_t g, uint8_t b) {
+    const uint16_t v = uint16_t((r & 0xF8) << 8) | uint16_t((g & 0xFC) << 3) | uint16_t(b >> 3);
+    // The panel takes the high byte first and the ESP32 stores the low byte
+    // first, so swap - the same reason LV_COLOR_16_SWAP is 1 in lv_conf.h.
+    return uint16_t((v << 8) | (v >> 8));
+}
+
+void panel_fill_split(uint16_t top, uint16_t bottom, uint16_t split) {
+    // One chunk's worth of a solid colour, streamed repeatedly. 14400 px is
+    // 80 full rows of the 180-wide panel, so rows divide evenly. Heap rather
+    // than static: this runs once at boot and 28KB is too much to keep in
+    // .bss for the rest of the device's life.
+    auto *chunk = static_cast<uint16_t *>(
+        heap_caps_malloc(LCD_SEND_BUF_PIXELS * sizeof(uint16_t),
+                         MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+    if (chunk == nullptr) return;
+    const uint16_t rows_per_chunk = LCD_SEND_BUF_PIXELS / PANEL_WIDTH;
+
+    set_address_window(0, 0, PANEL_WIDTH - 1, PANEL_HEIGHT - 1);
+
+    bool first = true;
+    for (uint16_t row = 0; row < PANEL_HEIGHT; row += rows_per_chunk) {
+        const uint16_t colour = (row < split) ? top : bottom;
+        for (size_t i = 0; i < LCD_SEND_BUF_PIXELS; i++) chunk[i] = colour;
+
+        spi_transaction_ext_t t;
+        memset(&t, 0, sizeof(t));
+        t.base.flags     = SPI_TRANS_MODE_QIO;
+        t.base.cmd       = 0x32;
+        t.base.addr      = first ? 0x002C00 : 0x003C00;
+        t.base.tx_buffer = chunk;
+        t.base.length    = size_t(LCD_SEND_BUF_PIXELS) * 16;
+
+        if (!first) cs_high();
+        cs_low();
+        spi_device_polling_transmit(s_spi, reinterpret_cast<spi_transaction_t *>(&t));
+        first = false;
+    }
+    cs_high();
+    heap_caps_free(chunk);
 }
 
 void panel_sleep() {
