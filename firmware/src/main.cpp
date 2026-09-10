@@ -38,21 +38,16 @@ lv_disp_drv_t      s_disp_drv;
 lv_indev_drv_t     s_indev_drv;
 
 void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *pixels) {
-    const uint32_t w = area->x2 - area->x1 + 1;
-    const uint32_t h = area->y2 - area->y1 + 1;
-
-    // The first few flushes are logged so a black screen can be diagnosed
-    // from the console alone: if these never appear, LVGL is not flushing;
-    // if they appear and the panel stays dark, the fault is below this line.
-    static uint8_t s_logged = 0;
-    if (s_logged < 3) {
-        s_logged++;
-        Serial.printf("[flush] #%u area (%d,%d)-(%d,%d) %ux%u px=%u\n",
-                      unsigned(s_logged), area->x1, area->y1, area->x2, area->y2,
-                      unsigned(w), unsigned(h), unsigned(w * h));
+    // full_refresh is set, so every flush is the whole UI. Logged once so a
+    // black screen can be separated into "LVGL never flushed" and "flushes
+    // land and the panel stays dark" from the console alone.
+    static bool s_logged = false;
+    if (!s_logged) {
+        s_logged = true;
+        Serial.printf("[flush] first frame (%d,%d)-(%d,%d)\n",
+                      area->x1, area->y1, area->x2, area->y2);
     }
-
-    panel_push_pixels(area->x1, area->y1, w, h, reinterpret_cast<uint16_t *>(pixels));
+    panel_push_frame(reinterpret_cast<uint16_t *>(pixels));
     lv_disp_flush_ready(drv);
 }
 
@@ -60,14 +55,19 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     LV_UNUSED(drv);
     const TouchPoint p = touch_read();
 
-    // Coordinates are reported in the panel's own 180x640 space. LVGL applies
-    // the same rotation to input that it applies to the framebuffer, so they
-    // must NOT be pre-rotated here - doing so lands every tap 90 degrees away
-    // from where it was made.
+    // The digitiser reports in the panel's own 180x640 space; LVGL sees the
+    // UI unrotated at 640x180, so the same turn the driver applies to pixels
+    // is applied here to the touch, in reverse. Same two mappings as
+    // panel_push_frame(), inverted.
     data->state = p.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
     if (p.pressed) {
-        data->point.x = p.x;
-        data->point.y = p.y;
+        if (UI_ROTATION == LV_DISP_ROT_270) {
+            data->point.x = p.y;
+            data->point.y = (PANEL_WIDTH - 1) - p.x;
+        } else {
+            data->point.x = (PANEL_HEIGHT - 1) - p.y;
+            data->point.y = p.x;
+        }
         // Presence for the auto-dimmer is taken here rather than from a widget
         // event, because this is the only place that sees every contact -
         // including taps on dead space and drags that never become clicks.
@@ -78,64 +78,34 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 void init_lvgl_display() {
     lv_init();
 
-    // Partial draw buffers, a tenth of the screen each, in internal SRAM.
+    // One full-size, unrotated 640x180 frame in PSRAM, and full_refresh on.
     //
-    // NOT full-screen, and NOT full_refresh - see the disp_drv setup below for
-    // why that combination cannot work. Partial buffers are also the better fit
-    // for this UI: most updates are one label (the clock, a temperature), so
-    // redrawing a small dirty rectangle beats repainting 640x180 every second.
-    //
-    // Internal SRAM rather than PSRAM because LVGL renders into these buffers
-    // pixel by pixel, and internal memory is roughly an order of magnitude
-    // faster for that. At 23KB each they fit comfortably; the full-screen
-    // buffers this replaced did not, which is why they were in PSRAM.
-    const size_t px = (size_t(PANEL_WIDTH) * PANEL_HEIGHT) / 10;
+    // LVGL renders the UI the way it is designed - wide and short - and the
+    // panel driver turns each finished frame into the glass's 180x640 space
+    // on the way out (panel_push_frame). LVGL's own software rotation is
+    // deliberately not used: it splits every redraw into narrow column bands
+    // with arbitrary partial windows, and on this glass those came out
+    // shifted and torn. The driver's path writes one full-screen window per
+    // frame, which is exactly what the boot self-test does and the one thing
+    // proven to look right. The price is a whole-frame redraw on any change
+    // (~25ms to rotate and stream), well inside the 33ms refresh period.
+    const size_t px    = size_t(UI_WIDTH) * UI_HEIGHT;
     const size_t bytes = px * sizeof(lv_color_t);
-
-    // MALLOC_CAP_DMA as well as INTERNAL: the SPI driver DMAs straight out of
-    // these, and asking for DMA-capable memory explicitly is cheaper than
-    // finding out at runtime that it was not.
-    const uint32_t caps = MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL;
-    auto *buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, caps));
-    auto *buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, caps));
-    if (buf_a == nullptr || buf_b == nullptr) {
-        // Fall back to PSRAM rather than refusing to boot: slower, but a
-        // working panel beats a dead one.
-        Serial.println("[warn] draw buffers fell back to PSRAM");
-        heap_caps_free(buf_a);
-        heap_caps_free(buf_b);
-        buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM));
-        buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM));
-    }
-    if (buf_a == nullptr || buf_b == nullptr) {
-        Serial.println("[fatal] could not allocate draw buffers");
+    auto *buf = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM));
+    if (buf == nullptr) {
+        Serial.println("[fatal] could not allocate the frame buffer in PSRAM");
         while (true) delay(1000);
     }
-    lv_disp_draw_buf_init(&s_draw_buf, buf_a, buf_b, px);
+    lv_disp_draw_buf_init(&s_draw_buf, buf, nullptr, px);
 
     lv_disp_drv_init(&s_disp_drv);
-    s_disp_drv.hor_res  = PANEL_WIDTH;    // the physical panel, not the UI
-    s_disp_drv.ver_res  = PANEL_HEIGHT;
-    s_disp_drv.flush_cb = flush_cb;
-    s_disp_drv.draw_buf = &s_draw_buf;
-    s_disp_drv.sw_rotate = 1;
-    s_disp_drv.rotated   = UI_ROTATION;
-
-    // full_refresh MUST stay 0 here. draw_buf_rotate() in lv_refr.c opens with
-    //
-    //     if(disp_refr->driver->full_refresh && drv->sw_rotate) {
-    //         LV_LOG_ERROR("cannot rotate a full refreshed display!");
-    //         return;
-    //     }
-    //
-    // and that return happens before any flush, so the panel never receives a
-    // single pixel - a permanently black screen with one error line on the
-    // serial console. LilyGO's factory example does set both, which is where
-    // this came from, but it ships a patched LVGL; that is what its "if you
-    // turn on software rotation, do not update or replace LVGL" comment means.
-    // Against stock LVGL the two are mutually exclusive.
-    s_disp_drv.full_refresh = 0;
-
+    s_disp_drv.hor_res      = UI_WIDTH;    // the UI, not the panel
+    s_disp_drv.ver_res      = UI_HEIGHT;
+    s_disp_drv.flush_cb     = flush_cb;
+    s_disp_drv.draw_buf     = &s_draw_buf;
+    s_disp_drv.full_refresh = 1;
+    s_disp_drv.sw_rotate    = 0;
+    s_disp_drv.rotated      = LV_DISP_ROT_NONE;
     lv_disp_drv_register(&s_disp_drv);
 
     lv_indev_drv_init(&s_indev_drv);

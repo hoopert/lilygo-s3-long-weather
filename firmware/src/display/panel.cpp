@@ -5,6 +5,8 @@
 #include "driver/spi_master.h"
 #include <esp_heap_caps.h>
 
+#include <lvgl.h>
+
 #include "config.h"
 #include "pins.h"
 #include "panel_init_tables.h"
@@ -15,6 +17,11 @@ spi_device_handle_t s_spi = nullptr;        // writes
 spi_device_handle_t s_spi_slow = nullptr;   // 4MHz, register reads only
 uint32_t s_flush_count = 0;
 bool s_bus_up = false;
+
+// One chunk of pixels in DMA-capable internal SRAM: 14400 px = 80 full rows
+// of the 180-wide panel, so a frame is exactly eight of them. The rotation in
+// panel_push_frame() gathers into this, and the SPI driver DMAs out of it.
+uint16_t *s_chunk = nullptr;
 
 // How pixel data goes over the wire once the address window is set.
 enum class WriteMode : uint8_t {
@@ -204,14 +211,8 @@ esp_err_t push_chunk(const uint16_t *p, size_t px, bool first) {
 }
 
 void fill_split(uint16_t top, uint16_t bottom, uint16_t split) {
-    // One chunk's worth of a solid colour, streamed repeatedly. 14400 px is
-    // 80 full rows of the 180-wide panel, so rows divide evenly. Heap rather
-    // than static: this runs at boot and 28KB is too much to keep in .bss for
-    // the rest of the device's life.
-    auto *chunk = static_cast<uint16_t *>(
-        heap_caps_malloc(LCD_SEND_BUF_PIXELS * sizeof(uint16_t),
-                         MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
-    if (chunk == nullptr) return;
+    if (s_chunk == nullptr) return;
+    uint16_t *chunk = s_chunk;
     const uint16_t rows_per_chunk = LCD_SEND_BUF_PIXELS / PANEL_WIDTH;
 
     set_address_window(0, 0, PANEL_WIDTH - 1, PANEL_HEIGHT - 1);
@@ -225,7 +226,6 @@ void fill_split(uint16_t top, uint16_t bottom, uint16_t split) {
         first = false;
     }
     cs_high();
-    heap_caps_free(chunk);
 }
 
 void apply_config(const PanelConfig &cfg) {
@@ -241,6 +241,14 @@ void panel_init() {
     pinMode(PIN_LCD_CS, OUTPUT);
     pinMode(PIN_LCD_RST, OUTPUT);
     cs_high();
+
+    s_chunk = static_cast<uint16_t *>(
+        heap_caps_malloc(LCD_SEND_BUF_PIXELS * sizeof(uint16_t),
+                         MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+    if (s_chunk == nullptr) {
+        Serial.println("[fatal] no DMA-capable SRAM for the panel chunk buffer");
+        while (true) delay(1000);
+    }
 
     apply_config(kResting);
     panel_report();
@@ -308,6 +316,42 @@ void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
         first = false;
         remaining -= chunk;
         p += chunk;
+    }
+    cs_high();
+}
+
+void panel_push_frame(const uint16_t *frame) {
+    if (frame == nullptr || s_chunk == nullptr) return;
+    s_flush_count++;
+
+    constexpr uint16_t kRows = LCD_SEND_BUF_PIXELS / PANEL_WIDTH;   // 80
+    set_address_window(0, 0, PANEL_WIDTH - 1, PANEL_HEIGHT - 1);
+
+    bool first = true;
+    for (uint16_t y0 = 0; y0 < PANEL_HEIGHT; y0 += kRows) {
+        // Gather one band of panel rows [y0, y0+kRows) from the unrotated
+        // frame. The loops are ordered so the frame - which lives in PSRAM -
+        // is read along its rows (contiguous, cache-friendly) and the scatter
+        // lands in internal SRAM where strided writes are cheap.
+        //
+        //   ROT_270: panel(x, y) = frame(X = y,       Y = 179 - x)
+        //   ROT_90:  panel(x, y) = frame(X = 639 - y, Y = x)
+        //
+        // These are LVGL's own definitions of the two rotations (lv_refr.c,
+        // draw_buf_rotate), kept so UI_ROTATION means the same thing it did
+        // when LVGL was doing the turning.
+        for (uint16_t x = 0; x < PANEL_WIDTH; x++) {
+            uint16_t *dst = s_chunk + x;
+            if (UI_ROTATION == LV_DISP_ROT_270) {
+                const uint16_t *src = frame + size_t(PANEL_WIDTH - 1 - x) * UI_WIDTH + y0;
+                for (uint16_t r = 0; r < kRows; r++) { *dst = src[r]; dst += PANEL_WIDTH; }
+            } else {
+                const uint16_t *src = frame + size_t(x) * UI_WIDTH + (UI_WIDTH - 1 - y0);
+                for (uint16_t r = 0; r < kRows; r++) { *dst = *src--; dst += PANEL_WIDTH; }
+            }
+        }
+        push_chunk(s_chunk, LCD_SEND_BUF_PIXELS, first);
+        first = false;
     }
     cs_high();
 }

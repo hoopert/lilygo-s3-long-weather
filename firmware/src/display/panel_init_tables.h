@@ -15,7 +15,10 @@ struct LcdCmd {
 // vendor's quirk of 32 zero parameter bytes after SLPIN (their table encodes
 // the entry's delay flags in the same byte as the length and this one reads
 // as "length 32"). Reproduced exactly - and, on this glass, it leaves the
-// panel black. The probe variants below take it apart one change at a time.
+// panel black. The boot probe bisected why: that same flag-byte typo means
+// no delay between SLPIN and SLPOUT, and a SLPOUT sent immediately after
+// SLPIN is ignored, so the panel never wakes. The 32 zero bytes are harmless.
+// The variants below are the bisection, kept for the next panel revision.
 const LcdCmd kInitFactory[] = {
     {0x28, {0}, 0, 20},     // DISPOFF
     {0x10, {0}, 32, 0},     // SLPIN + 32 zero bytes

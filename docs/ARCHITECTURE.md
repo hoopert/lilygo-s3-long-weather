@@ -62,54 +62,47 @@ that needs them.
 
 ## Rotation
 
-The panel is physically 180×640. The UI is 640×180. LVGL bridges that with
-**software rotation**, not the panel's MADCTL register:
+The panel is physically 180×640. The UI is 640×180. LVGL never knows: it
+renders the UI unrotated, full-frame, into one 640×180 buffer in PSRAM, and the
+panel driver turns each finished frame into the glass's space on the way out.
 
 ```cpp
-s_disp_drv.hor_res      = PANEL_WIDTH;   // 180 - the physical panel
-s_disp_drv.ver_res      = PANEL_HEIGHT;  // 640
-s_disp_drv.sw_rotate    = 1;
-s_disp_drv.rotated      = UI_ROTATION;    // LV_DISP_ROT_270 - config.h
-s_disp_drv.full_refresh = 0;             // must be 0 with sw_rotate - see below
+s_disp_drv.hor_res      = UI_WIDTH;    // 640 - the UI, not the panel
+s_disp_drv.ver_res      = UI_HEIGHT;   // 180
+s_disp_drv.full_refresh = 1;
+s_disp_drv.sw_rotate    = 0;
 ```
 
-`hor_res` and `ver_res` describe the **panel**, not the UI. LVGL then reports
-640×180 to the application and rotates each frame on its way out.
+`panel_push_frame()` does the turn, one 80-row band at a time through a
+DMA-capable chunk in internal SRAM, using LVGL's own definitions of the two
+rotations so `UI_ROTATION` keeps meaning what it always did:
 
-**`full_refresh` must stay 0.** `draw_buf_rotate()` in `lv_refr.c` begins:
-
-```c
-if(disp_refr->driver->full_refresh && drv->sw_rotate) {
-    LV_LOG_ERROR("cannot rotate a full refreshed display!");
-    return;
-}
+```
+ROT_270: panel(x, y) = frame(X = y,       Y = 179 - x)
+ROT_90:  panel(x, y) = frame(X = 639 - y, Y = x)
 ```
 
-That `return` happens before any flush, so the panel never receives a pixel:
-a permanently black screen with one error line on the serial console and no
-other symptom. LilyGO's factory example *does* set both — it ships a patched
-LVGL, which is what its "if you turn on software rotation, do not update or
-replace LVGL" comment is warning about. Against stock LVGL the two are
-mutually exclusive, and partial refresh is the better fit here anyway: most
-updates are a single label, so a small dirty rectangle beats repainting
-640x180 every second.
+`touch_read_cb()` applies the inverse to the digitiser's raw 180×640
+coordinates, so a tap lands where it was made under either setting. To turn
+the UI round, change `UI_ROTATION` in `config.h`; nothing else moves.
 
-Two further consequences worth knowing:
+**Why not LVGL's `sw_rotate`?** It was the first design, and it produced a
+torn, barely legible image on this glass. LVGL rotates each dirty area through
+a scratch buffer of `LV_DISP_ROT_MAX_BUF` and flushes one narrow column band
+per chunk, each with its own partial address window - and those windows land
+wherever the dirty rectangle happened to be. The vendor's own demo only ever
+writes full-height bands at aligned offsets; this UI's label-sized updates do
+not. The driver-side turn writes exactly one window per frame - the full
+screen, the same window the boot self-test uses - and that is the single
+pattern proven to look right here. It also sidesteps stock LVGL's refusal to
+combine `sw_rotate` with `full_refresh`, which the vendor works around by
+patching LVGL (their "if you turn on software rotation, do not update or
+replace LVGL" comment).
 
-**Touch input is rotated by LVGL, not by us.** `indev_pointer_proc()` applies the
-same 90° transform to pointer coordinates that it applies to the framebuffer, so
-`touch_read_cb()` must report **raw panel coordinates**. Pre-rotating them lands
-every tap 90° from where it was made. This is the single easiest thing to get
-wrong in this file.
-
-**Rotation happens in chunks.** LVGL rotates each dirty area through a scratch
-buffer of `LV_DISP_ROT_MAX_BUF`, flushing once per chunk, so one logical redraw
-becomes several `panel_push_pixels` calls. Growing that constant means fewer
-chunks, but it is carved out of the `LV_MEM_SIZE` pool, so the two move together.
-
-The draw buffers are a tenth of the screen each and live in **internal SRAM**,
-because LVGL renders into them pixel by pixel and internal memory is far faster
-for that than PSRAM. They fall back to PSRAM if internal allocation fails.
+The cost is a whole-frame redraw on any change: roughly 10ms for LVGL to
+render 640×180 into PSRAM, 12ms to rotate, 14ms on the wire at 32MHz over four
+lines. LVGL only redraws when something is invalidated, so at rest the panel
+receives nothing.
 
 ## Adding a screen
 
@@ -230,14 +223,14 @@ comments pointing at each other.
 | | |
 |---|---|
 | `LV_COLOR_16_SWAP` must be `1` | The AXS15231B wants big-endian RGB565; the ESP32 is little-endian and SPI transmits in memory order. Wrong value gives a recognisable but lurid image. |
-| `sw_rotate` + `full_refresh` is a black screen | Stock LVGL refuses the combination and returns before flushing. See [Rotation](#rotation). Copying LilyGO's example verbatim walks straight into this, because theirs runs on a patched LVGL. |
+| Do not turn `sw_rotate` back on | Stock LVGL refuses it alongside `full_refresh` (black screen, one error line), and without `full_refresh` it flushes partial windows that this glass renders torn. See [Rotation](#rotation). The driver rotates instead. |
 | Serial can starve the main loop | With USB CDC on boot and no host attached, each write blocks up to 100ms. Anything logging per-frame makes the UI, the button and the Wi-Fi portal all go unresponsive while the device looks fine. `main.cpp` sets `Serial.setTxTimeoutMs(0)` so logging drops instead of blocking. |
 | The panel can be asked what state it is in | `panel_report()` reads RDDID / RDDPM / RDDCOLMOD back over QSPI opcode `0x03` at 4MHz on a second, `NO_DUMMY` device handle and prints them at boot. A black screen with `display ON, sleep out` on the console is a pixel-path or backlight fault; `no reply on QSPI` is a wiring, power or reset fault. Don't debug a black panel without this line. |
-| The vendor's short init table leaves this glass black | LilyGO's `AXS15231B.cpp` initialises with just `DISPOFF / SLPIN (+32 zero bytes, no delay) / SLPOUT / DISPON`. On the board this was developed on, that sequence produced a black panel in every write-path, clock and SPI-mode variant tried, and the same write path lit the panel the moment the init was replaced - the DCS-complete sequence (`kInitDcs`: adds NORON, INVOFF, COLMOD 16bpp, WRCTRLD) or either of the vendor's long manufacturer-register tables. Why the vendor's own binary survives its table is unexplained; the panel's verdict wins. Found with the boot probe, not by reading code - three earlier rewrites that reasoned from the vendor source all failed. |
+| The vendor's init table has a one-byte bug that leaves this glass black | LilyGO's table encodes each entry's post-command delay in flag bits of the length byte (`0x40` = 20ms, `0x80` = 200ms). Its SLPIN entry carries `0x20` - neither flag - so SLPOUT follows SLPIN with no gap and the controller ignores it; the panel never wakes. (The same typo makes it send 32 zero parameter bytes, which turn out to be harmless.) Found by the boot probe: eight configurations, then a five-way bisection of the table, on the device. `kInitDcs` in `panel_init_tables.h` is the resting sequence; the bisection tables are kept for the next revision. |
 | The pixel write path is the shipped factory binary's | CS held low for the whole frame, first chunk as opcode `0x32` + `0x002C00`, later chunks as raw data with no opcode or address (`WriteMode::kQuadHeld`). The vendor's `#else` path (CS toggled per chunk, `0x3C` continue) also works; both were probed. |
 | `PANEL_BOOT_PROBE` cycles alternatives at boot | When set, boot walks candidate init tables for 2.5s each with a two-colour fill and a step number on the console. One flash answers "which does this glass want". It is what found the row above. Leave it at 0 once known - it lengthens every boot. |
-| Touch coordinates must **not** be pre-rotated | LVGL already does it. See [Rotation](#rotation). |
+| Touch coordinates **are** rotated by us | LVGL sees the UI unrotated, so `touch_read_cb()` maps the digitiser's raw 180×640 point into 640×180 with the inverse of `panel_push_frame()`'s turn. See [Rotation](#rotation). |
 | Gesture limits are not settable in `lv_conf.h` | LVGL 8.4 hardcodes `LV_INDEV_DEF_GESTURE_LIMIT` and `LV_INDEV_DEF_LONG_PRESS_TIME` without an `#ifndef` guard. They are set on the indev driver in `main.cpp`. |
 | Deleting an object inside its own event handler | Use `lv_obj_del_async()`. `overlays_dismiss()` does. |
-| PSRAM is required | The framebuffers are 450KB. `main.cpp` fails loudly at boot rather than faulting somewhere unhelpful later. |
+| PSRAM is required | The frame buffer is 230KB. `main.cpp` fails loudly at boot rather than faulting somewhere unhelpful later. |
 | CST3530 must be re-armed after every read | Write `0xD00002AB` or it stops reporting entirely after the first contact. |

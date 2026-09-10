@@ -374,7 +374,10 @@ void overlays_show_quick_settings() {
 
     // Refresh, with the age of the data on the button itself - the question
     // "is this stale?" is the only reason anyone opens this sheet in a hurry.
-    pill(root, LAYOUT_SAFE + 404, 64, 96, 24, ICON_REFRESH "  REFRESH",
+    // Text only: the pill's font is Jost, which has no icon glyphs, and LVGL
+    // logs a missing-glyph warning on every redraw for a codepoint it cannot
+    // draw. An icon here needs its own label in icons_ui.
+    pill(root, LAYOUT_SAFE + 404, 64, 96, 24, "REFRESH",
          &font_micro, COL_ALUMINUM, COL_SURFACE, refresh_cb);
 
     s_qs_updated = theme_label(root, &font_micro, COL_ALUMINUM_DIM, "");
