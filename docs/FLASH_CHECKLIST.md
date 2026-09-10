@@ -20,12 +20,13 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Strip geometry | Eight 52px columns; the last one ends short of the right edge. `NOW` in turquoise on a raised slab. |
-| Rain | A percentage in turquoise **and** a thin bar under it, taller with the chance. Both absent below 10%. |
+| Strip geometry | A column of row labels (`TEMP` on the temperature baseline, `UV`, a droplet and `%`, `WIND`), then seven 52px hour columns; the last ends short of the right edge. `NOW` in turquoise on a raised slab that runs from above the hour label to below the wind row. |
+| UV | A number per hour on a scale from sky blue (0-2) to purple (11+). |
+| Rain | A bare number in turquoise **and** a thin bar under it, taller with the chance; `-` where the chance is zero. |
 | Wind | A small arrow and a number in sky blue. The arrow is one of eight compass glyphs and points where the wind is *going* (a north wind points down). Absent below 3 mph. |
 | Hourly temperatures | 30px, on the colour ramp, no degree sign. A three-digit value (100°F) drops to a smaller cut and still fits its column. |
-| Forecast screen | Swipe left from Today: ten day columns - `TODAY` then weekdays, a daytime glyph, the high in 30px on the ramp, the low beneath in grey, a turquoise rain percentage where it is 10% or more. Swipe right brings Today back. |
-| Now zone | Big temperature with the degree mark up by its cap and a small `F` below that; icon top-right of the zone; condition; `FEELS 71° · H 84° L 58°`; `DENVER · 2:35P · 4 MIN AGO`. The last line fits with a long town name. |
+| Forecast screen | Swipe left from Today: ten day columns - `TODAY` then weekdays, a daytime glyph, the high in 30px on the ramp, the low beneath in grey, a turquoise droplet (snowflake on a snow day) and the chance as a bare number, `-` for none. Swipe right brings Today back. |
+| Now zone | Big temperature with the degree mark up by its cap and a small `F` below that; `FEELS 71°` under it; then `84°` in sunset and `58°` in sky, no H or L letters; then `2:35 PM · DENVER` (the clock is the time of day; the forecast's age is in Quick Settings). Top-right, the condition glyph with its name in small capitals under it, wrapping to two lines where it must. |
 | Seam | A hairline between the zones with tiny rivet dots down it. |
 | Press feedback | Every pill and button lightens while held. (It does not shrink: the design's 0.97 scale needs an LVGL alpha layer this 16-bit build cannot draw.) |
 
@@ -60,7 +61,7 @@ Tick what passes; anything else is the fix round.
 
 | Check | Right looks like |
 |---|---|
-| Entry | Thirty seconds after the last touch, in the small hours, the whole weather screen fades out over about 1.5s and a big clock fades in: `h:mm` in 128px dim oat, centred, nothing else. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). A manual level does not prevent it. |
+| Entry | Thirty seconds after the last touch, in the small hours, the whole weather screen fades out over about 1.5s and a big clock fades in: `h:mm` in 128px dim oat, a touch right of centre. Left of it the condition glyph alone, about four fifths the digits' height and dimmer; right of it a sunrise glyph over the next sunrise time (`6:42 AM`), the pair as tall as the glyph. The backlight settles at level 16, the dimmest that is legible on this glass (14 is the first that lights at all). A manual level does not prevent it. |
 | Exit | Any touch brings the weather back the same way, at whatever level was set before the clock: the manual one if there was one, otherwise the sun's. |
 | Manual levels | A level set on the bar or the button holds through the night and the day until the sun moves the panel into a new part of its day (dawn, day, dusk, night, small hours) or the panel resets; then Auto takes over. |
 

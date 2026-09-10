@@ -154,7 +154,8 @@ String build_url() {
            "precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,"
            "relative_humidity_2m,visibility,uv_index,is_day,pressure_msl";
     url += "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,"
-           "precipitation_probability_max,weather_code,wind_speed_10m_max";
+           "precipitation_probability_max,weather_code,wind_speed_10m_max,"
+           "uv_index_max,precipitation_sum";
     // Sea-level pressure, not surface: the outlook bands and body-effect
     // thresholds (design/logic.json) are written for MSL, and at altitude the
     // surface reading is hundreds of hPa lower. past_hours gives the 24
@@ -266,6 +267,10 @@ bool fetch_forecast() {
         JsonArray d_prob = daily["precipitation_probability_max"];
         JsonArray d_code = daily["weather_code"];
         JsonArray d_wind = daily["wind_speed_10m_max"];
+        JsonArray d_uv   = daily["uv_index_max"];
+        JsonArray d_psum = daily["precipitation_sum"];
+        JsonArray d_rise = daily["sunrise"];
+        JsonArray d_set  = daily["sunset"];
         uint8_t k = 0;
         for (size_t i = 0; i < d_time.size() && k < WX_DAILY_DAYS; i++, k++) {
             WxDay &day = next.days[k];
@@ -275,6 +280,10 @@ bool fetch_forecast() {
             day.precip_prob_max = d_prob[i] | 0;
             day.code            = d_code[i] | -1;
             day.wind_max        = d_wind[i] | NAN;
+            day.uv_max          = d_uv[i]   | NAN;
+            day.precip_sum      = d_psum[i] | 0.0f;
+            day.sunrise         = d_rise[i] | time_t(0);
+            day.sunset          = d_set[i]  | time_t(0);
         }
         next.day_count = k;
     }
@@ -314,6 +323,7 @@ bool fetch_forecast() {
         s.gust          = h_gust[i]  | NAN;
         s.wind_dir      = h_dir[i]   | 0;
         s.humidity      = h_hum[i]   | NAN;
+        s.uv            = h_uv[i]    | NAN;
         s.pressure      = h_pmsl[i]  | NAN;
         s.is_day        = (h_isday[i] | 1) != 0;
     }

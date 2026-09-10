@@ -108,8 +108,8 @@ under your thumb instead of after you let go.
 
 | # | Name | Contents |
 |---|---|---|
-| 0 | **Today** (home) | Current conditions on the left; on the right, the next eight hours - hour, glyph, temperature, the trend ribbon, chance of rain with its bar, wind - each column a tap away from Hour Detail. The design drew ten columns; eight was the first change asked for on the glass. |
-| +1 | **Forecast** (swipe left) | Ten days in ten columns: weekday, daytime glyph, high on the colour ramp, low, chance of rain when it matters. Today is on a raised slab. |
+| 0 | **Today** (home) | Current conditions on the left: the hero temperature, `FEELS 71°` under it, then the day's high in sunset and low in sky (colour is the label), then the clock and the town; the condition glyph top-right with its name set small beneath it. On the right, a column of row labels (`TEMP`, `UV`, a droplet and `%`, `WIND`) and the next seven hours - hour, glyph, temperature, the trend ribbon, UV index on a sky-to-purple scale, chance of rain as a bare number with its bar (`-` when there is none), wind - each hour a tap away from Hour Detail. The design drew ten columns; eight was the first change asked for on the glass, seven with labels the second. |
+| +1 | **Forecast** (swipe left) | Ten days in ten columns: weekday, daytime glyph, high on the colour ramp, low, and the chance of precipitation as a bare number behind a droplet - or a snowflake when the day's weather is snow; `-` when there is none. Today is on a raised slab. |
 | −1 | **System** (swipe right) | A title bar with free heap and PSRAM (the dot turns sunset under 40K heap) and the one action, **CHANGE NETWORK**, which asks for a second tap before rebooting into the setup portal. Below a rivet-dotted rule, three 200px columns: network with signal bars, IP address, location with coordinates; update host, touch controller (raw digitiser coordinates while a finger is down), display. A footer carries uptime, version and build date. Brightness is not here - it is one swipe away in Quick Settings. |
 
 Three screens on one strip, home in the middle. A page indicator sits
@@ -164,9 +164,12 @@ tap on empty space or a swipe up closes it.
 ## Night Mode
 
 After 23:00 local, thirty seconds after the last touch, the Today screen
-cross-fades over 1500ms to a clock: 128px digits in dim oat, `h:mm`, centred
-on an otherwise empty screen, at backlight 16 - the dimmest level this glass
-can show legibly. It is a nightlight that knows the time, not a screen. A
+cross-fades over 1500ms to a clock: 128px digits in dim oat, `h:mm`, a little
+right of centre to clear the wider bezel, at backlight 16 - the dimmest level
+this glass can show legibly. Left of the digits, the condition as a glyph
+alone, four fifths their height; right of them, a sunrise glyph over the time
+of the next sunrise. Both at 69% so the time stays the brightest thing on the
+glass. It is a nightlight that knows the time, not a screen. A
 manual level does not prevent it. Any touch brings the weather back the same
 way, at whatever level was set before the clock - the manual one if there was
 one, otherwise the sun's. Off never enters it. (The design's §5 night layout, a
@@ -194,7 +197,7 @@ because nothing on the panel knows how long the router will take.
 | Fetching | `FETCHING FORECAST` |
 | Fetch failed | `FETCHING FORECAST` — `NO ANSWER YET · TRYING AGAIN`; retries every 60s by itself |
 | Forecast ready | Today fades in over the boot screen in 400ms |
-| Connection lost, data still valid | Everything stays on screen with a small orange Wi-Fi-off mark; the "x min ago" line is never omitted, so stale data can never present itself as current |
+| Connection lost, data still valid | Everything stays on screen with a small orange Wi-Fi-off mark; the forecast's age is one swipe down, in Quick Settings |
 
 The setup network is WPA2. Its password is eight digits (WPA2's minimum),
 generated on first boot, kept in NVS, and rotated by **CHANGE NETWORK**; it

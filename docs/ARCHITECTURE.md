@@ -231,10 +231,11 @@ and committed, so a normal build needs no Node toolchain.
 | `font_body` | Jost\* Regular | 20 | full ASCII |
 | `font_label` | Jost\* Medium | 15 | full ASCII |
 | `font_micro` | Jost\* Medium | 12 | full ASCII |
+| `icons_xl` | Material Symbols Rounded | 84 | 14 weather glyphs - the Night Mode condition |
 | `icons_lg` | Material Symbols Rounded | 56 | 14 weather glyphs |
-| `icons_md` | Material Symbols Rounded | 32 | the hourly strip and the Forecast screen |
+| `icons_md` | Material Symbols Rounded | 32 | the Forecast screen; `wb_twilight` for the night clock's sunrise |
 | `icons_sm` | Material Symbols Rounded | 20 | weather + chrome |
-| `icons_xs` | Material Symbols Rounded | 11 | wind arrow, refresh - inline with Micro |
+| `icons_xs` | Material Symbols Rounded | 11 | wind arrows, refresh, droplet, snowflake - inline with Micro |
 | `icons_ui` | Material Symbols Rounded | 16 | chrome |
 
 To add an icon: find its codepoint, add it to `WX_ICONS` or `UI_ICONS` in

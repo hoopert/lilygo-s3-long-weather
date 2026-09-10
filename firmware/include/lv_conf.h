@@ -92,6 +92,7 @@
     LV_FONT_DECLARE(font_title) \
     LV_FONT_DECLARE(font_hour_narrow) \
     LV_FONT_DECLARE(icons_md) \
+    LV_FONT_DECLARE(icons_xl) \
     LV_FONT_DECLARE(font_body)  \
     LV_FONT_DECLARE(font_label) \
     LV_FONT_DECLARE(font_micro) \

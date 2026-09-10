@@ -30,6 +30,7 @@
 #define COL_TURQUOISE    0x3FBFB0   // THE Airstream accent - water, active state
 #define COL_SUNSET       0xE2703A   // heat, alerts
 #define COL_SKY          0x6FA8C7   // wind, cold
+#define COL_UV_HIGH      0x9B59B6   // the top of the UV scale; sky is the bottom
 
 // Night Mode (design/SPEC.md §5). Derived, not tokens: the hero is oat mixed
 // 45% toward aluminum-dim; the clock and the strip's hour labels sit below
@@ -47,6 +48,7 @@ LV_FONT_DECLARE(font_hour_narrow); // Jost* Medium 24 - hourly temperatures at t
 LV_FONT_DECLARE(font_body);    // Jost* Regular  20
 LV_FONT_DECLARE(font_label);   // Jost* Medium   15
 LV_FONT_DECLARE(font_micro);   // Jost* Medium   12, tracked, uppercase
+LV_FONT_DECLARE(icons_xl);     // Material Symbols Rounded 84 - the night clock's condition glyph
 LV_FONT_DECLARE(icons_lg);     // Material Symbols Rounded 56
 LV_FONT_DECLARE(icons_md);     // Material Symbols Rounded 32 - the hourly strip and the Forecast screen
 LV_FONT_DECLARE(icons_sm);     // Material Symbols Rounded 20
@@ -62,8 +64,11 @@ LV_FONT_DECLARE(icons_xs);     // Material Symbols Rounded 11 - inline with Micr
 // The drawn columns inset 2px from the zone split so ten 42px columns end at
 // x630, the safe line, rather than running under the masked corner at 638.
 #define LAYOUT_COLUMNS_X   (LAYOUT_STRIP_X + 2)
-#define LAYOUT_HOUR_COL_W  52                                     // eight columns end at x626
-#define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 416
+#define LAYOUT_HOUR_COL_W  52
+// The first column names the rows; the hours follow it.
+#define LAYOUT_STRIP_COLS  (WX_HOURLY_SLOTS + 1)                   // 8, ending at x626
+#define LAYOUT_HOURS_X     (LAYOUT_COLUMNS_X + LAYOUT_HOUR_COL_W)   // 262
+#define LAYOUT_STRIP_W     (LAYOUT_HOUR_COL_W * WX_HOURLY_SLOTS)   // 364, the hours only
 // The Forecast screen: ten day columns across the safe width.
 #define LAYOUT_DAY_COL_W   ((UI_WIDTH - LAYOUT_SAFE * 2) / WX_DAILY_DAYS)   // 62
 #define LAYOUT_HEADER_H    22
@@ -92,6 +97,9 @@ void theme_press_feedback(lv_obj_t *obj);
 // applied to hourly values and to the trend ribbon alike. Input is in whatever
 // unit the panel is currently displaying.
 lv_color_t theme_temp_color(float temp, bool imperial);
+
+// The UV index: sky at 0-2, running to purple at 11+.
+lv_color_t theme_uv_color(float uv);
 
 // Convenience: a label with a style and a parent, one call instead of four.
 lv_obj_t *theme_label(lv_obj_t *parent, const lv_font_t *font, uint32_t color,

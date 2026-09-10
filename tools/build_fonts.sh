@@ -105,10 +105,12 @@ UI_ICONS='0xE798,0xEFD8,0xE63E,0xE648,0xE5D5,0xE8B8,0xE1AB,0xE518,0xE51C,0xE192,
 # the wind arrow is one of these rather than a rotated `navigation`, because
 # rotating any widget in LVGL 8.4 needs an alpha layer, which needs
 # LV_COLOR_SCREEN_TRANSP, which this 16-bit build does not have.
-XS_ICONS='0xE55D,0xE5D5,0xF1DF,0xF1E0,0xF1E1,0xF1E2,0xF1E3,0xF1E4,0xF1E5,0xF1E6'
+# ...plus water_drop and ac_unit for the rain and snow rows.
+XS_ICONS='0xE55D,0xE5D5,0xF1DF,0xF1E0,0xF1E1,0xF1E2,0xF1E3,0xF1E4,0xF1E5,0xF1E6,0xE798,0xEB3B'
 
 gen MaterialSymbolsRounded 56 "$WX_ICONS"              icons_lg
-gen MaterialSymbolsRounded 32 "$WX_ICONS"              icons_md   # hourly strip, Forecast screen
+gen MaterialSymbolsRounded 84 "$WX_ICONS"              icons_xl   # the night clock's condition glyph
+gen MaterialSymbolsRounded 32 "$WX_ICONS,0xE1C6"       icons_md   # Forecast screen; wb_twilight for the night clock's sunrise
 gen MaterialSymbolsRounded 20 "$WX_ICONS,$UI_ICONS"    icons_sm
 gen MaterialSymbolsRounded 16 "$UI_ICONS"              icons_ui
 gen MaterialSymbolsRounded 11 "$XS_ICONS"              icons_xs

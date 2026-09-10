@@ -27,6 +27,8 @@
 
 // --- chrome (icons_sm 20px, icons_ui 16px) --------------------------------
 #define ICON_DROP                "\xEE\x9E\x98"   // U+E798 water_drop
+#define ICON_SNOWFLAKE           "\xEE\xAC\xBB"   // U+EB3B ac_unit
+#define ICON_SUNRISE             "\xEE\x87\x86"   // U+E1C6 wb_twilight
 #define ICON_WIND                "\xEE\xBF\x98"   // U+EFD8 air
 #define ICON_WIFI                "\xEE\x98\xBE"   // U+E63E wifi
 #define ICON_WIFI_OFF            "\xEE\x99\x88"   // U+E648 wifi_off

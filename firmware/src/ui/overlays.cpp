@@ -522,7 +522,7 @@ void overlays_show_hour(int hour_index) {
     // Expand out of the tapped column. Hours past the strip (a neighbour of
     // a neighbour) have no column; they open from the panel's own place.
     s_hour_from_x = hour_index < WX_HOURLY_SLOTS
-                        ? LAYOUT_COLUMNS_X + hour_index * LAYOUT_HOUR_COL_W
+                        ? LAYOUT_HOURS_X + hour_index * LAYOUT_HOUR_COL_W
                         : kPanelX;
     lv_anim_t a;
     lv_anim_init(&a);

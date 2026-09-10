@@ -16,27 +16,37 @@
 #include "ui/screen_manager.h"
 #include "ui/theme.h"
 
-// The home screen, to design/SPEC.md §1, at eight hours rather than ten: the
-// strip's rows (glyph, temperature, trend ribbon, rain and its bar, wind) are
-// the design's, in 52px columns instead of 42. Night Mode is a second layer
-// on the same screen holding only a clock: when the panel is a nightlight
-// there is nothing to read but the time. Crossing between the layouts is
-// one animation that fades the weather out and the clock in.
+// The home screen, to design/SPEC.md §1, at seven hours rather than ten: the
+// strip's rows (glyph, temperature, trend ribbon, UV, chance of rain and its
+// bar, wind) are the design's, in 52px columns instead of 42, with a column
+// of row labels in front of them. Night Mode is a second layer on the same
+// screen: a clock, the condition glyph beside it, and the next sunrise. Crossing
+// between the layouts is one animation that fades the weather out and the
+// clock in.
 
 namespace {
 
 // --- vertical rhythm of one hour column (SPEC §1, layout.today tokens) -------
 constexpr int kHourY      = 6;     // hour label
 constexpr int kIconY      = 22;    // condition glyph
-constexpr int kTempY      = 42;    // temperature
-constexpr int kRibbonY    = 78;    // top of the trend band
-constexpr int kRibbonH    = 30;
-constexpr int kPrecipY    = 112;   // chance of rain, and the top of the bar's range
-constexpr int kBarBottomY = 152;   // the bar grows up from here, 2px wide
-constexpr int kBarMaxH    = 24;    // 100% - height is prob * 0.24
-constexpr int kWindY      = 152;
+constexpr int kTempY      = 42;    // temperature, Title 30 (line box 32, baseline 25 in)
+constexpr int kRibbonY    = 76;    // top of the trend band
+constexpr int kRibbonH    = 24;
+constexpr int kUvY        = 102;   // UV index
+constexpr int kPrecipY    = 120;   // chance of rain
+constexpr int kBarBottomY = 148;   // the bar grows up from here, 2px wide
+constexpr int kBarMaxH    = 10;    // 100% - height is prob / 10
+constexpr int kWindY      = 150;
 constexpr int kSepY       = 20;    // column hairlines run y20-y112
 constexpr int kSepH       = 92;
+constexpr int kSlabH      = 172;   // the NOW slab: above the hour label to below the wind
+
+// The row labels sit in the first column of the strip, right-aligned so they
+// read as the heading of the row they name. TEMP shares the numerals'
+// baseline: Micro's line box is 14 with the baseline 11 in, Title's is 32
+// with the baseline 25 in.
+constexpr int kLabelRight = LAYOUT_HOURS_X - 6;
+constexpr int kLabelTempY = kTempY + 25 - 11;
 
 // --- the "Now" zone --------------------------------------------------------
 //
@@ -47,13 +57,20 @@ constexpr int kSepH       = 92;
 // icon: the icon sits at a fixed x, and a three-digit hero would collide with
 // it if the degree sign were baked into the same auto-sized label. The unit
 // letter hangs off the degree mark in turn, smaller and dimmer.
-constexpr int kHeroY      = 22;
+//
+// Under the hero, in reading order: how it feels, then the day's high and low,
+// coloured rather than lettered (red is the high, blue the low), then the
+// clock and the town. The condition sits under its own icon, on the right.
+constexpr int kHeroY      = 22;    // digits y24-y74
 constexpr int kDegreeDY   = 12;    // hero top -> degree top (y34, cap-aligned)
 constexpr int kUnitDY     = 18;    // degree top -> unit top (y52)
-constexpr int kNowIconX   = 146;
+constexpr int kNowIconX   = 138;   // 56px glyph, centred on x166
 constexpr int kNowIconY   = 10;
-constexpr int kConditionY = 98;
-constexpr int kMetaY      = 124;
+constexpr int kConditionX = 130;   // centred under the icon, 72 wide
+constexpr int kConditionY = 66;
+constexpr int kConditionW = 72;
+constexpr int kFeelsY     = 82;
+constexpr int kHighLowY   = 102;
 constexpr int kPlaceY     = 146;
 constexpr int kPlaceW     = 190;   // the place line must fit x10-x200
 
@@ -66,13 +83,24 @@ constexpr int kRivetY0     = 16;
 constexpr int kRivetPitch  = 16;
 constexpr int kRivetCount  = 10;                   // y16 .. y160
 
-// --- Night Mode: a clock, and nothing else ----------------------------------
+// --- Night Mode: a clock, a glyph and the sunrise ---------------------------
 // The 128px cut's line box is 95px tall. Placed by eye on the glass: the
 // first try (top at y18) sat high, the second (centred, top at y52) sat low;
 // this is the middle of the two. Shifted right a little because the bezel on
 // this orientation's left edge is the wider one.
-constexpr int kClockY = 35;
-constexpr int kClockX = 12;
+//
+// Its digits run y37-y127. The condition glyph to the left and the sunrise
+// column to the right are centred on that band, at 69% so the time stays
+// the brightest thing on a screen meant to be glanced at from a bunk. Both
+// are placed against the measured width of the time, since "1:05" is a good
+// deal narrower than "12:05".
+constexpr int kClockY       = 35;
+constexpr int kClockX       = 12;
+constexpr int kClockCenterX = kClockX + UI_WIDTH / 2;
+constexpr int kClockMidY    = 82;
+constexpr int kNightGap     = 18;                  // between the time and its companions
+constexpr int kNightIconW   = 84;                  // icons_xl advance
+constexpr int kNightOpa     = 176;                 // 69%
 
 struct HourWidgets {
     lv_obj_t *cell;        // invisible hit target, carries the index
@@ -80,9 +108,10 @@ struct HourWidgets {
     lv_obj_t *hour;
     lv_obj_t *icon;
     lv_obj_t *temp;
+    lv_obj_t *uv;
     lv_obj_t *precip;
     lv_obj_t *bar;         // 2px chance-of-rain bar under the percentage
-    lv_obj_t *wind_arrow;  // `navigation` glyph, rotated to where the wind blows
+    lv_obj_t *wind_arrow;  // compass glyph for where the wind blows
     lv_obj_t *wind_speed;
 };
 
@@ -96,13 +125,15 @@ struct TodayUi {
     lv_obj_t *hero;
     lv_obj_t *hero_unit;     // the degree mark
     lv_obj_t *hero_suffix;   // F or C
-    lv_obj_t *condition;
     lv_obj_t *seam;
     lv_obj_t *rivets[kRivetCount];
 
     // Day layer.
     lv_obj_t *now_icon;
-    lv_obj_t *meta;
+    lv_obj_t *condition;
+    lv_obj_t *feels;
+    lv_obj_t *high;
+    lv_obj_t *low;
     lv_obj_t *place;
     lv_obj_t *status;
     lv_obj_t *ribbon;
@@ -111,6 +142,9 @@ struct TodayUi {
 
     // Night layer.
     lv_obj_t *night_clock;
+    lv_obj_t *night_icon;
+    lv_obj_t *night_sunrise_icon;
+    lv_obj_t *night_sunrise;
 
     // Cross-fade state. night_mix is 0 in daylight, 255 in Night Mode.
     lv_obj_t *indicator;     // the manager's page indicator, found lazily
@@ -120,7 +154,7 @@ struct TodayUi {
 
 TodayUi s_ui = {};
 
-int column_x(int i)      { return LAYOUT_COLUMNS_X + i * LAYOUT_HOUR_COL_W; }
+int column_x(int i)      { return LAYOUT_HOURS_X + i * LAYOUT_HOUR_COL_W; }
 int column_center(int i) { return column_x(i) + LAYOUT_HOUR_COL_W / 2; }
 
 void hour_clicked(lv_event_t *e) {
@@ -171,13 +205,17 @@ void upper_ascii(char *s) {
     for (; *s; s++) *s = char(toupper(static_cast<unsigned char>(*s)));
 }
 
+int text_width(const char *s, const lv_font_t *font, int letter_space = 0) {
+    return int(lv_txt_get_width(s, uint32_t(strlen(s)), font, letter_space, LV_TEXT_FLAG_NONE));
+}
+
 // ---------------------------------------------------------------------------
 // Night Mode cross-fade.
 //
-// One value, 0..255, drives everything: the day layer, the hero, the
-// condition, the seam and the page indicator fade out as the clock fades in.
-// Whichever layer is fully transparent at the end is also hidden, so a
-// dormant layout costs no draw time and takes no taps.
+// One value, 0..255, drives everything: the day layer, the hero, the seam and
+// the page indicator fade out as the night layer fades in. Whichever layer is
+// fully transparent at the end is also hidden, so a dormant layout costs no
+// draw time and takes no taps.
 // ---------------------------------------------------------------------------
 void apply_night_mix(uint8_t v) {
     s_ui.night_mix = v;
@@ -192,7 +230,7 @@ void apply_night_mix(uint8_t v) {
     else          lv_obj_clear_flag(s_ui.night, LV_OBJ_FLAG_HIDDEN);
 
     const lv_opa_t day_opa = 255 - v;
-    for (lv_obj_t *o : {s_ui.hero, s_ui.hero_unit, s_ui.hero_suffix, s_ui.condition, s_ui.seam}) {
+    for (lv_obj_t *o : {s_ui.hero, s_ui.hero_unit, s_ui.hero_suffix, s_ui.seam}) {
         lv_obj_set_style_opa(o, day_opa, 0);
     }
     for (lv_obj_t *r : s_ui.rivets) lv_obj_set_style_opa(r, day_opa, 0);
@@ -226,10 +264,10 @@ void set_night(bool on) {
 // ---------------------------------------------------------------------------
 // The temperature ribbon.
 //
-// A 2px polyline through the ten hourly temperatures with a gradient fading
-// away beneath it. It is drawn into a canvas rather than assembled from
-// widgets because the fill has to follow the curve rather than stair-step under
-// it, and because it only needs redrawing when the forecast changes - roughly
+// A 2px polyline through the hourly temperatures with a gradient fading away
+// beneath it. It is drawn into a canvas rather than assembled from widgets
+// because the fill has to follow the curve rather than stair-step under it,
+// and because it only needs redrawing when the forecast changes - roughly
 // once every ten minutes, which makes a per-pixel loop free.
 //
 // This is the element that lets you read the shape of the day before reading a
@@ -267,7 +305,7 @@ void draw_ribbon(const WxData &d, int count) {
         span = 4.0f;
     }
 
-    const int pad = 4;                       // keep the curve off the band edges
+    const int pad = 3;                       // keep the curve off the band edges
     const int usable = kRibbonH - pad * 2;
 
     auto y_for = [&](float temp) -> float {
@@ -277,7 +315,7 @@ void draw_ribbon(const WxData &d, int count) {
 
     // Sample every x in the band, interpolating between hour points.
     for (int x = 0; x < LAYOUT_STRIP_W; x++) {
-        const int abs_x = LAYOUT_COLUMNS_X + x;
+        const int abs_x = LAYOUT_HOURS_X + x;
 
         // Which two hour centres does this column fall between?
         float fpos = float(abs_x - column_center(0)) / float(LAYOUT_HOUR_COL_W);
@@ -335,6 +373,15 @@ lv_obj_t *make_column_label(lv_obj_t *parent, const lv_font_t *font, uint32_t co
     return l;
 }
 
+// A row label in the strip's first column, its right edge a few px short of
+// the first hour.
+lv_obj_t *make_row_label(lv_obj_t *parent, const char *text, int y) {
+    lv_obj_t *l = theme_label(parent, &font_micro, COL_ALUMINUM_DIM, text);
+    lv_obj_set_style_text_letter_space(l, 1, 0);
+    lv_obj_set_pos(l, kLabelRight - text_width(text, &font_micro, 1), y);
+    return l;
+}
+
 lv_obj_t *create(lv_obj_t *parent) {
     s_ui = {};
 
@@ -374,14 +421,27 @@ lv_obj_t *create(lv_obj_t *parent) {
     s_ui.now_icon = theme_label(day, &icons_lg, COL_ALUMINUM, ICON_WX_OVERCAST);
     lv_obj_set_pos(s_ui.now_icon, kNowIconX, kNowIconY);
 
-    s_ui.meta = theme_label(day, &font_micro, COL_ALUMINUM_DIM, "");
-    lv_obj_set_style_text_letter_space(s_ui.meta, 1, 0);
-    lv_obj_set_pos(s_ui.meta, LAYOUT_SAFE, kMetaY);
+    // The condition, set small under its icon and allowed to wrap: "PARTLY
+    // CLOUDY" is two lines of Micro, and a caption belongs with its picture.
+    s_ui.condition = theme_label(day, &font_micro, COL_ALUMINUM, "");
+    lv_obj_set_style_text_letter_space(s_ui.condition, 1, 0);
+    lv_obj_set_style_text_align(s_ui.condition, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(s_ui.condition, kConditionW);
+    lv_label_set_long_mode(s_ui.condition, LV_LABEL_LONG_WRAP);
+    lv_obj_set_pos(s_ui.condition, kConditionX, kConditionY);
 
-    // Untracked, unlike the meta line above it: with the town, the clock and
-    // the age of the data all on one line, the tracking is what would push the
-    // "x MIN AGO" off the end for any town longer than DENVER, and that is the
-    // one piece of this line the panel must never lose.
+    s_ui.feels = theme_label(day, &font_micro, COL_ALUMINUM_DIM, "");
+    lv_obj_set_style_text_letter_space(s_ui.feels, 1, 0);
+    lv_obj_set_pos(s_ui.feels, LAYOUT_SAFE, kFeelsY);
+
+    // High and low, told apart by colour alone: the warm one is the high.
+    s_ui.high = theme_label(day, &font_label, COL_SUNSET, "");
+    lv_obj_set_pos(s_ui.high, LAYOUT_SAFE, kHighLowY);
+    s_ui.low = theme_label(day, &font_label, COL_SKY, "");
+    lv_obj_set_pos(s_ui.low, LAYOUT_SAFE, kHighLowY);
+
+    // Untracked: with the clock and the town on one line, tracking is what
+    // would push a long town name off the end.
     s_ui.place = theme_label(day, &font_micro, COL_ALUMINUM_DIM, "");
     lv_obj_set_width(s_ui.place, kPlaceW);
     lv_label_set_long_mode(s_ui.place, LV_LABEL_LONG_CLIP);
@@ -403,9 +463,21 @@ lv_obj_t *create(lv_obj_t *parent) {
         s_ui.ribbon = lv_canvas_create(day);
         lv_canvas_set_buffer(s_ui.ribbon, s_ui.ribbon_buf, LAYOUT_STRIP_W, kRibbonH,
                              LV_IMG_CF_TRUE_COLOR_ALPHA);
-        lv_obj_set_pos(s_ui.ribbon, LAYOUT_COLUMNS_X, kRibbonY);
+        lv_obj_set_pos(s_ui.ribbon, LAYOUT_HOURS_X, kRibbonY);
         lv_canvas_fill_bg(s_ui.ribbon, lv_color_hex(COL_GROUND), LV_OPA_TRANSP);
         lv_obj_clear_flag(s_ui.ribbon, LV_OBJ_FLAG_CLICKABLE);
+    }
+
+    // --- the row labels, in the strip's first column ------------------------
+    make_row_label(day, "TEMP", kLabelTempY);
+    make_row_label(day, "UV", kUvY);
+    make_row_label(day, "WIND", kWindY);
+    {
+        // A droplet in front of the percent sign, so the row reads as "chance
+        // of rain" without spelling it out.
+        lv_obj_t *pct = make_row_label(day, "%", kPrecipY);
+        lv_obj_t *drop = theme_label(day, &icons_xs, COL_ALUMINUM_DIM, ICON_DROP);
+        lv_obj_set_pos(drop, lv_obj_get_x(pct) - 13, kPrecipY + 2);
     }
 
     for (int i = 0; i < WX_HOURLY_SLOTS; i++) {
@@ -415,13 +487,13 @@ lv_obj_t *create(lv_obj_t *parent) {
 
         w.bg = theme_decor(day);
         lv_obj_set_pos(w.bg, x, 0);
-        lv_obj_set_size(w.bg, LAYOUT_HOUR_COL_W - 1, 172);   // hour label to wind, with room to spare
+        lv_obj_set_size(w.bg, LAYOUT_HOUR_COL_W - 1, kSlabH);
         lv_obj_set_style_radius(w.bg, 5, 0);
         lv_obj_set_style_bg_opa(w.bg, LV_OPA_TRANSP, 0);
         lv_obj_set_style_bg_color(w.bg, lv_color_hex(COL_SURFACE), 0);
 
-        // The rivet hairline between columns. Skipped before the first column,
-        // where the zone seam already does the job.
+        // The rivet hairline between hours. None before the first: the label
+        // column ends where the NOW slab begins.
         if (i > 0) {
             lv_obj_t *sep = theme_decor(day);
             lv_obj_add_style(sep, &style_hairline, 0);
@@ -437,6 +509,8 @@ lv_obj_t *create(lv_obj_t *parent) {
                                    LAYOUT_HOUR_COL_W);
         w.temp = make_column_label(day, &font_title, COL_ALUMINUM, x, kTempY,
                                    LAYOUT_HOUR_COL_W);
+        w.uv = make_column_label(day, &font_micro, COL_SKY, x, kUvY,
+                                 LAYOUT_HOUR_COL_W);
         w.precip = make_column_label(day, &font_micro, COL_TURQUOISE, x, kPrecipY,
                                      LAYOUT_HOUR_COL_W);
 
@@ -485,6 +559,18 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_set_style_text_align(s_ui.night_clock, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_pos(s_ui.night_clock, kClockX, kClockY);
 
+    // The condition, as a glyph alone, four fifths the height of the digits.
+    s_ui.night_icon = theme_label(night, &icons_xl, COL_NIGHT_HERO, "");
+    lv_obj_set_style_opa(s_ui.night_icon, kNightOpa, 0);
+    lv_obj_set_pos(s_ui.night_icon, 0, kClockMidY - icons_xl.line_height / 2);
+
+    // The next sunrise: the one thing worth knowing at 3am is how long until
+    // it is not 3am. Icon over time, the pair as tall as the glyph.
+    s_ui.night_sunrise_icon = theme_label(night, &icons_md, COL_NIGHT_HERO, ICON_SUNRISE);
+    lv_obj_set_style_opa(s_ui.night_sunrise_icon, kNightOpa, 0);
+    s_ui.night_sunrise = theme_label(night, &font_body, COL_NIGHT_HERO, "");
+    lv_obj_set_style_opa(s_ui.night_sunrise, kNightOpa, 0);
+
     // --- root: shared between the layouts ------------------------------------
     s_ui.hero = theme_label(parent, &font_hero, COL_OAT, "--");
     lv_obj_set_style_text_letter_space(s_ui.hero, -1, 0);
@@ -492,9 +578,6 @@ lv_obj_t *create(lv_obj_t *parent) {
 
     s_ui.hero_unit = theme_label(parent, &font_title, COL_OAT, "°");
     s_ui.hero_suffix = theme_label(parent, &font_label, COL_ALUMINUM_DIM, "");
-
-    s_ui.condition = theme_label(parent, &font_body, COL_ALUMINUM, "");
-    lv_obj_set_pos(s_ui.condition, LAYOUT_SAFE, kConditionY);
 
     apply_night_mix(0);
     return parent;
@@ -514,6 +597,7 @@ void clear_column(HourWidgets &w) {
     lv_label_set_text(w.hour, "");
     lv_label_set_text(w.icon, "");
     lv_label_set_text(w.temp, "");
+    lv_label_set_text(w.uv, "");
     lv_label_set_text(w.precip, "");
     lv_label_set_text(w.wind_speed, "");
     lv_obj_add_flag(w.bar, LV_OBJ_FLAG_HIDDEN);
@@ -533,7 +617,7 @@ void set_wind(HourWidgets &w, int i, const WxHour &h) {
     lv_label_set_text(w.wind_speed, buf);
 
     // Centre the arrow-gap-number group in the column.
-    const int text_w = lv_txt_get_width(buf, strlen(buf), &font_micro, 0, LV_TEXT_FLAG_NONE);
+    const int text_w = text_width(buf, &font_micro);
     const int group_w = 12 + 2 + text_w;
     const int start = column_x(i) + (LAYOUT_HOUR_COL_W - group_w) / 2;
     lv_obj_set_pos(w.wind_arrow, start, kWindY + 1);
@@ -544,17 +628,28 @@ void set_wind(HourWidgets &w, int i, const WxHour &h) {
     lv_obj_clear_flag(w.wind_arrow, LV_OBJ_FLAG_HIDDEN);
 }
 
+void set_uv(HourWidgets &w, const WxHour &h) {
+    if (isnan(h.uv)) {
+        lv_label_set_text(w.uv, "");
+        return;
+    }
+    char buf[8];
+    snprintf(buf, sizeof(buf), "%d", int(lroundf(h.uv)));
+    lv_label_set_text(w.uv, buf);
+    lv_obj_set_style_text_color(w.uv, theme_uv_color(h.uv), 0);
+}
+
 void set_precip(HourWidgets &w, const WxHour &h) {
-    // Below 10% the number is noise. An empty cell reads as "no rain" faster
-    // than a column of zeroes does, and it keeps the strip quiet enough that a
-    // real chance of rain stands out. The bar goes with the number.
-    if (h.precip_prob < 10) {
-        lv_label_set_text(w.precip, "");
+    // The row is labelled "%", so the cells hold the bare number. No chance
+    // at all is a dash rather than a zero or a blank: a dash says "checked,
+    // nothing", where a blank could mean the data never came.
+    if (h.precip_prob <= 0) {
+        lv_label_set_text(w.precip, "-");
         lv_obj_add_flag(w.bar, LV_OBJ_FLAG_HIDDEN);
         return;
     }
     char buf[8];
-    snprintf(buf, sizeof(buf), "%d%%", h.precip_prob);
+    snprintf(buf, sizeof(buf), "%d", h.precip_prob);
     lv_label_set_text(w.precip, buf);
 
     int bar_h = int(lroundf(float(h.precip_prob) * float(kBarMaxH) / 100.0f));
@@ -563,6 +658,42 @@ void set_precip(HourWidgets &w, const WxHour &h) {
     lv_obj_set_height(w.bar, bar_h);
     lv_obj_set_y(w.bar, kBarBottomY - bar_h);
     lv_obj_clear_flag(w.bar, LV_OBJ_FLAG_HIDDEN);
+}
+
+// The sunrise that is still ahead: today's if it has not happened, else
+// tomorrow's, else today's plus a day when the forecast is only one day deep.
+time_t next_sunrise(const WxData &d, time_t now) {
+    if (d.sunrise > now) return d.sunrise;
+    if (d.day_count > 1 && d.days[1].sunrise > now) return d.days[1].sunrise;
+    return d.sunrise + 24 * 3600;
+}
+
+void update_night(const WxData &d, time_t now) {
+    char clock[16];
+    fmt_clock_hm(now, d.utc_offset, clock, sizeof(clock));
+    lv_label_set_text(s_ui.night_clock, clock);
+
+    // The companions hug the measured time, not the label's full width.
+    const int half = text_width(clock, &font_clock) / 2;
+    const int left  = kClockCenterX - half;
+    const int right = kClockCenterX + half;
+
+    lv_label_set_text(s_ui.night_icon, icon_for(wx_icon_for(d.code, d.is_day)));
+    lv_obj_set_x(s_ui.night_icon, left - kNightGap - kNightIconW);
+
+    char rise[16];
+    fmt_clock(next_sunrise(d, now), d.utc_offset, rise, sizeof(rise));
+    lv_label_set_text(s_ui.night_sunrise, rise);
+
+    // Icon over time, the two as tall as the glyph beside the clock and
+    // centred on the same band; the column is as wide as the time.
+    const int col_w = text_width(rise, &font_body);
+    const int col_x = right + kNightGap;
+    const int icon_w = 32;
+    const int top = kClockMidY - kNightIconW / 2 + 4;
+    lv_obj_set_pos(s_ui.night_sunrise_icon, col_x + (col_w - icon_w) / 2, top);
+    lv_obj_set_pos(s_ui.night_sunrise, col_x,
+                   kClockMidY + kNightIconW / 2 - 4 - font_body.line_height);
 }
 
 void update(lv_obj_t *root) {
@@ -585,20 +716,26 @@ void update(lv_obj_t *root) {
         lv_label_set_text(s_ui.hero, "--");
         lv_label_set_text(s_ui.hero_suffix, "");
         place_hero_marks();
-        lv_label_set_text(s_ui.condition,
-                          net_connected() ? "Getting forecast" : "Setting up");
+        lv_label_set_text(s_ui.condition, "");
+        lv_label_set_text(s_ui.now_icon, "");
+        lv_label_set_text(s_ui.feels, net_connected() ? "GETTING FORECAST" : "SETTING UP");
         // Normally unseen: the boot and setup screens cover this until the
         // first forecast lands. It remains for the case where they cannot.
         snprintf(buf, sizeof(buf), "%s", net_connected() ? weather_status_text()
                                                          : net_state_text());
-        lv_label_set_text(s_ui.meta, buf);
-        lv_label_set_text(s_ui.place, "");
+        lv_label_set_text(s_ui.high, "");
+        lv_label_set_text(s_ui.low, "");
+        lv_label_set_text(s_ui.place, buf);
         lv_label_set_text(s_ui.status, "");
         lv_label_set_text(s_ui.night_clock, "");
+        lv_label_set_text(s_ui.night_icon, "");
+        lv_label_set_text(s_ui.night_sunrise, "");
         for (auto &w : s_ui.hours) clear_column(w);
         if (s_ui.ribbon) lv_canvas_fill_bg(s_ui.ribbon, lv_color_hex(COL_GROUND), LV_OPA_TRANSP);
         return;
     }
+
+    const time_t now = time(nullptr);
 
     // --- Now ----------------------------------------------------------------
     fmt_temp_plain(d.temp, buf, sizeof(buf));
@@ -611,29 +748,34 @@ void update(lv_obj_t *root) {
                                 d.is_day ? lv_color_hex(COL_OAT)
                                          : lv_color_hex(COL_ALUMINUM), 0);
 
-    lv_label_set_text(s_ui.condition, wx_condition_text(d.code));
+    snprintf(buf, sizeof(buf), "%s", wx_condition_text(d.code));
+    upper_ascii(buf);
+    lv_label_set_text(s_ui.condition, buf);
 
-    snprintf(buf, sizeof(buf), "FEELS %d°  ·  H %d° L %d°",
-             int(lroundf(d.apparent)), int(lroundf(d.temp_max)),
-             int(lroundf(d.temp_min)));
-    lv_label_set_text(s_ui.meta, buf);
+    snprintf(buf, sizeof(buf), "FEELS %d°", int(lroundf(d.apparent)));
+    lv_label_set_text(s_ui.feels, buf);
 
-    char town[sizeof(d.location)], clock[16], age[24];
+    fmt_temp(d.temp_max, buf, sizeof(buf));
+    lv_label_set_text(s_ui.high, buf);
+    fmt_temp(d.temp_min, buf, sizeof(buf));
+    lv_label_set_text(s_ui.low, buf);
+    lv_obj_align_to(s_ui.low, s_ui.high, LV_ALIGN_OUT_RIGHT_TOP, 10, 0);
+
+    // The clock first, then the town: the time of day is the thing this line
+    // is glanced at for, and the town is the thing that never changes.
+    char town[sizeof(d.location)], clock[16];
     snprintf(town, sizeof(town), "%s", d.location[0] ? d.location : "HERE");
     upper_ascii(town);
-    fmt_clock_compact(time(nullptr), d.utc_offset, clock, sizeof(clock));
-    fmt_relative(weather_seconds_since_update(), age, sizeof(age));
-    snprintf(buf, sizeof(buf), "%s  ·  %s  ·  %s", town, clock, age);
+    fmt_clock(now, d.utc_offset, clock, sizeof(clock));
+    snprintf(buf, sizeof(buf), "%s  ·  %s", clock, town);
     lv_label_set_text(s_ui.place, buf);
 
-    fmt_clock_hm(time(nullptr), d.utc_offset, clock, sizeof(clock));
-    lv_label_set_text(s_ui.night_clock, clock);
-
     // A quiet marker when the network has gone away but the data is still
-    // worth showing. Silence would be worse than a stale reading; a stale
-    // reading presented as current would be worse still, which is why the
-    // "x min ago" on the line to its left is never omitted.
+    // worth showing. Silence would be worse than a stale reading; the age of
+    // the data is one tap away, in Quick Settings.
     lv_label_set_text(s_ui.status, net_connected() ? "" : ICON_WIFI_OFF);
+
+    update_night(d, now);
 
     // --- hourly strip -------------------------------------------------------
     const int count = d.hour_count < WX_HOURLY_SLOTS ? d.hour_count : WX_HOURLY_SLOTS;
@@ -674,6 +816,7 @@ void update(lv_obj_t *root) {
         lv_obj_set_style_text_font(
             w.temp, strlen(buf) >= 3 ? &font_hour_narrow : &font_title, 0);
 
+        set_uv(w, h);
         set_precip(w, h);
         set_wind(w, i, h);
     }
