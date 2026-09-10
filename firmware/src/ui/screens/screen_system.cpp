@@ -198,6 +198,8 @@ const ScreenDef kDef = {
     ICON_SETTINGS,
     create,
     update,
+    -1,                                            // a drawer to the left of home
+    UI_SWIPE_LEFT | UI_SWIPE_RIGHT | UI_SWIPE_DOWN,
 };
 
 }  // namespace

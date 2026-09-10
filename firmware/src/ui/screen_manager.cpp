@@ -22,30 +22,29 @@ uint32_t s_last_gesture_ms = 0;
 
 void gesture_cb(lv_event_t *e) {
     LV_UNUSED(e);
-    backlight_note_activity();
-    ui_note_gesture();
+    ui_handle_swipe(lv_indev_get_gesture_dir(lv_indev_get_act()));
+}
 
-    const lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-
-    // An open overlay owns vertical gestures - dismissing it has to be the
-    // first thing a downward swipe does, or the quick-settings sheet would
-    // reopen the moment you tried to close it.
-    if (overlays_active()) {
-        if (dir == LV_DIR_BOTTOM || dir == LV_DIR_TOP) overlays_dismiss();
-        return;
-    }
-
+uint8_t swipe_bit(lv_dir_t dir) {
     switch (dir) {
-        case LV_DIR_LEFT:   screens_next(); break;
-        case LV_DIR_RIGHT:  screens_prev(); break;
-        case LV_DIR_BOTTOM: overlays_show_quick_settings(); break;
-        default: break;
+        case LV_DIR_LEFT:   return UI_SWIPE_LEFT;
+        case LV_DIR_RIGHT:  return UI_SWIPE_RIGHT;
+        case LV_DIR_TOP:    return UI_SWIPE_UP;
+        case LV_DIR_BOTTOM: return UI_SWIPE_DOWN;
+        default:            return UI_SWIPE_NONE;
     }
 }
 
-// The page indicator: one dot per screen, the active one drawn as a short
-// turquoise bar rather than a larger dot, so it reads as a position in a strip
-// rather than as a button you might be able to press.
+int index_of_position(int position) {
+    for (int i = 0; i < s_count; i++) {
+        if (s_defs[i].position == position) return i;
+    }
+    return -1;
+}
+
+// The page indicator: one dot per screen in strip order (by position), the
+// active one drawn as a short turquoise bar rather than a larger dot, so it
+// reads as a place on the strip rather than as a button you might press.
 void build_indicator(lv_obj_t *screen, int index) {
     lv_obj_t *row = theme_decor(screen);
     lv_obj_set_size(row, LV_SIZE_CONTENT, 6);
@@ -55,7 +54,15 @@ void build_indicator(lv_obj_t *screen, int index) {
     lv_obj_set_style_pad_column(row, 4, 0);
     lv_obj_align(row, LV_ALIGN_BOTTOM_MID, 0, -3);
 
+    // Walk positions from leftmost to rightmost rather than registry order.
+    int lo = 127, hi = -128;
     for (int i = 0; i < s_count; i++) {
+        if (s_defs[i].position < lo) lo = s_defs[i].position;
+        if (s_defs[i].position > hi) hi = s_defs[i].position;
+    }
+    for (int p = lo; p <= hi; p++) {
+        const int i = index_of_position(p);
+        if (i < 0) continue;
         lv_obj_t *dot = theme_decor(row);
         const bool active = (i == index);
         lv_obj_set_size(dot, active ? 12 : 4, 3);
@@ -80,7 +87,38 @@ void screens_register(const ScreenDef &def) {
         Serial.println("[ui] screen registry full");
         return;
     }
+    if (index_of_position(def.position) >= 0) {
+        Serial.printf("[ui] screen \"%s\" duplicates position %d; not registered\n",
+                      def.name, int(def.position));
+        return;
+    }
     s_defs[s_count++] = def;
+}
+
+void ui_handle_swipe(lv_dir_t dir) {
+    backlight_note_activity();
+    ui_note_gesture();
+
+    const uint8_t bit = swipe_bit(dir);
+    if (bit == UI_SWIPE_NONE) return;
+
+    // An open overlay is the active context. It gets the swipe or nothing
+    // does - never the screen beneath it.
+    if (overlays_active()) {
+        if (overlays_swipes() & bit) overlays_dismiss();
+        return;
+    }
+
+    if (!s_started) return;
+    const ScreenDef &cur = s_defs[s_current];
+    if (!(cur.swipes & bit)) return;
+
+    switch (dir) {
+        case LV_DIR_RIGHT:  screens_show_position(cur.position - 1, true); break;
+        case LV_DIR_LEFT:   screens_show_position(cur.position + 1, true); break;
+        case LV_DIR_BOTTOM: overlays_show_quick_settings(); break;
+        default: break;
+    }
 }
 
 void screens_begin() {
@@ -98,34 +136,51 @@ void screens_begin() {
     }
 
     s_started = true;
-    s_current = 0;
-    if (s_roots[0]) lv_scr_load(s_roots[0]);
+    const int home = index_of_position(0);
+    if (home < 0) Serial.println("[ui] no screen at position 0; showing the first registered");
+    s_current = home < 0 ? 0 : home;
+    if (s_roots[s_current]) lv_scr_load(s_roots[s_current]);
     screens_update_all();
 }
 
 void screens_show(int index, bool animate) {
-    if (!s_started || s_count == 0) return;
-    if (index < 0) index = s_count - 1;
-    if (index >= s_count) index = 0;
-    if (index == s_current) return;
+    if (!s_started || index < 0 || index >= s_count || index == s_current) return;
 
-    // Slide in the direction of travel, wrapping the short way round so a
-    // two-screen panel does not appear to rewind when it wraps.
-    const bool forward = (index == (s_current + 1) % s_count);
-    const lv_scr_load_anim_t anim =
-        !animate ? LV_SCR_LOAD_ANIM_NONE
-                 : (forward ? LV_SCR_LOAD_ANIM_MOVE_LEFT : LV_SCR_LOAD_ANIM_MOVE_RIGHT);
+    // Stack order is distance from home. Moving outward, the new screen
+    // slides in OVER the current one from its side of the strip; moving back
+    // toward home, the current screen slides OUT the way it came, revealing
+    // what was beneath. Same rule for every pair, so a future third screen
+    // needs no special case.
+    const int from = s_defs[s_current].position;
+    const int to   = s_defs[index].position;
+    const bool outward = abs(to) > abs(from);
+    lv_scr_load_anim_t anim = LV_SCR_LOAD_ANIM_NONE;
+    if (animate) {
+        if (outward) {
+            anim = (to < from) ? LV_SCR_LOAD_ANIM_OVER_RIGHT   // new enters from the left
+                               : LV_SCR_LOAD_ANIM_OVER_LEFT;   // new enters from the right
+        } else {
+            anim = (to > from) ? LV_SCR_LOAD_ANIM_OUT_LEFT     // current leaves to the left
+                               : LV_SCR_LOAD_ANIM_OUT_RIGHT;   // current leaves to the right
+        }
+    }
 
     s_current = index;
     if (s_defs[index].update) s_defs[index].update(s_roots[index]);
     lv_scr_load_anim(s_roots[index], anim, animate ? UI_SCREEN_ANIM_MS : 0, 0, false);
 }
 
-void screens_next() { screens_show((s_current + 1) % (s_count ? s_count : 1), true); }
-void screens_prev() { screens_show((s_current - 1 + s_count) % (s_count ? s_count : 1), true); }
+void screens_show_position(int position, bool animate) {
+    const int i = index_of_position(position);
+    if (i >= 0) screens_show(i, animate);
+}
+
+void screens_next() { if (s_started) screens_show_position(s_defs[s_current].position + 1, true); }
+void screens_prev() { if (s_started) screens_show_position(s_defs[s_current].position - 1, true); }
 
 int screens_count()   { return s_count; }
 int screens_current() { return s_current; }
+int screens_current_position() { return s_started ? s_defs[s_current].position : 0; }
 
 void screens_update_active() {
     if (!s_started) return;

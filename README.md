@@ -47,7 +47,7 @@ Full instructions, including the command-line and PlatformIO paths:
 |---|---|
 | **Tap an hour column** | That hour in full — feels-like, rain chance *and* amount, wind, gusts, humidity, cloud cover, dew point |
 | **Tap the big temperature** | Now in full — a sun arc showing where you are in the day, high/low, UV, pressure, visibility |
-| **Swipe left / right** | Move between screens |
+| **Swipe right** | Open the System drawer (swipe left to put it away) |
 | **Swipe down** | Quick settings: brightness, refresh, Wi-Fi and IP |
 | **Swipe up** | Close whatever is open |
 | **Press and hold** | Fetch a new forecast now |
