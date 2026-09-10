@@ -138,6 +138,20 @@
     <tr><td>BOOT button, hold</td><td>Blank the display; any touch wakes it</td></tr>
   </table>
 
+  <h2>Seeing what the panel is doing</h2>
+  <p class="note" style="text-align:left">
+    Press <strong>Install firmware</strong> again with the board connected. Once
+    it is already running this firmware, the dialog offers
+    <strong>Logs &amp; Console</strong> instead of only reinstalling — that is the
+    serial output, live, in the browser. Nothing to install.
+  </p>
+  <p class="note" style="text-align:left">
+    It is the fastest way to answer "is it booting?". A healthy start prints the
+    touch controller it found, then free heap and PSRAM, then the Wi-Fi state.
+    Any line beginning <code>[fatal]</code> or <code>[warn]</code> is the panel
+    telling you exactly what went wrong.
+  </p>
+
   <h2>If the install button does nothing</h2>
   <p class="note">
     Hold <strong>BOOT</strong>, tap <strong>RST</strong>, release <strong>BOOT</strong>, then
