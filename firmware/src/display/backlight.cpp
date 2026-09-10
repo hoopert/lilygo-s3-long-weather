@@ -177,6 +177,13 @@ void backlight_tick() {
     apply_duty(s_current);
 }
 
+void backlight_set_immediate(uint8_t level) {
+    s_current   = level;
+    s_fade_from = level;
+    s_target    = level;
+    apply_duty(s_current);
+}
+
 void backlight_note_activity() {
     s_last_activity_ms = millis();
     if (s_mode == BacklightMode::Off) s_mode = BacklightMode::Auto;

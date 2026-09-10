@@ -30,6 +30,23 @@
 #define TOUCH_INVERT_Y   false
 
 // ---------------------------------------------------------------------------
+// Boot self-test
+//
+// For the first ~700ms after power-on, drive the panel directly - no LVGL -
+// with the top half of the native (portrait) panel in turquoise and the bottom
+// half in sunset orange, at full backlight. It doubles as a power-on splash,
+// and it answers two questions at once:
+//
+//   - Anything at all?   Then the driver, the SPI bus and the backlight work,
+//                        and any remaining blackness is LVGL-side.
+//   - Which end is orange?  That is the panel's row 640, so it tells you which
+//                        way the UI needs to rotate: set UI_ROTATION so the
+//                        orange end becomes the RIGHT edge of the landscape UI.
+// ---------------------------------------------------------------------------
+#define PANEL_BOOT_SELF_TEST    1
+#define PANEL_BOOT_SELF_TEST_MS 700
+
+// ---------------------------------------------------------------------------
 // Setup portal
 // ---------------------------------------------------------------------------
 #define WIFI_AP_NAME     "Airstream-Weather"

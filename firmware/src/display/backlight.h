@@ -46,6 +46,11 @@ int  backlight_local_seconds_of_day();
 void backlight_set_utc_offset(long seconds);
 long backlight_utc_offset();
 
+// Write a level to the panel right now, bypassing the fade, and make it the
+// point the next fade starts from. For the boot self-test, which runs before
+// the main loop and therefore before backlight_tick() ever gets a turn.
+void backlight_set_immediate(uint8_t level);
+
 // --- control surface -------------------------------------------------------
 void          backlight_set_manual(uint8_t level);   // 0-255, enters Manual
 void          backlight_set_auto();

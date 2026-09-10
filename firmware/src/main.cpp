@@ -40,6 +40,18 @@ lv_indev_drv_t     s_indev_drv;
 void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *pixels) {
     const uint32_t w = area->x2 - area->x1 + 1;
     const uint32_t h = area->y2 - area->y1 + 1;
+
+    // The first few flushes are logged so a black screen can be diagnosed
+    // from the console alone: if these never appear, LVGL is not flushing;
+    // if they appear and the panel stays dark, the fault is below this line.
+    static uint8_t s_logged = 0;
+    if (s_logged < 3) {
+        s_logged++;
+        Serial.printf("[flush] #%u area (%d,%d)-(%d,%d) %ux%u px=%u\n",
+                      unsigned(s_logged), area->x1, area->y1, area->x2, area->y2,
+                      unsigned(w), unsigned(h), unsigned(w * h));
+    }
+
     panel_push_pixels(area->x1, area->y1, w, h, reinterpret_cast<uint16_t *>(pixels));
     lv_disp_flush_ready(drv);
 }
@@ -80,8 +92,12 @@ void init_lvgl_display() {
     const size_t px = (size_t(PANEL_WIDTH) * PANEL_HEIGHT) / 10;
     const size_t bytes = px * sizeof(lv_color_t);
 
-    auto *buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_INTERNAL));
-    auto *buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, MALLOC_CAP_INTERNAL));
+    // MALLOC_CAP_DMA as well as INTERNAL: the SPI driver DMAs straight out of
+    // these, and asking for DMA-capable memory explicitly is cheaper than
+    // finding out at runtime that it was not.
+    const uint32_t caps = MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL;
+    auto *buf_a = static_cast<lv_color_t *>(heap_caps_malloc(bytes, caps));
+    auto *buf_b = static_cast<lv_color_t *>(heap_caps_malloc(bytes, caps));
     if (buf_a == nullptr || buf_b == nullptr) {
         // Fall back to PSRAM rather than refusing to boot: slower, but a
         // working panel beats a dead one.
@@ -154,6 +170,18 @@ void setup() {
 
     panel_init();
     backlight_init();       // comes up dark and fades in with the first frame
+
+#if PANEL_BOOT_SELF_TEST
+    // Drive the panel directly, before LVGL exists. See config.h.
+    backlight_set_immediate(255);
+    panel_fill_split(panel_rgb565(0x3F, 0xBF, 0xB0),   // COL_TURQUOISE, rows 0-319
+                     panel_rgb565(0xE2, 0x70, 0x3A),   // COL_SUNSET,    rows 320-639
+                     PANEL_HEIGHT / 2);
+    Serial.printf("[panel] self-test: turquoise/orange split, backlight full, "
+                  "holding %dms\n", PANEL_BOOT_SELF_TEST_MS);
+    delay(PANEL_BOOT_SELF_TEST_MS);
+#endif
+
     touch_init();
 
     init_lvgl_display();
@@ -185,6 +213,7 @@ void setup() {
 
 void loop() {
     static uint32_t s_last_second = 0;
+    static uint32_t s_last_heartbeat = 0;
 
     net_tick();
     buttons_tick();
@@ -202,6 +231,24 @@ void loop() {
         s_last_second = now;
         screens_update_active();
         overlays_tick();
+    }
+
+    // A heartbeat every five seconds. Its presence proves the loop is running
+    // - a panel that goes quiet after "[boot] ready" is otherwise
+    // indistinguishable from one hung in an SPI transaction - and its fields
+    // are the ones that matter for a dark screen: is the backlight up, and is
+    // LVGL flushing.
+    if (now - s_last_heartbeat >= 5000) {
+        s_last_heartbeat = now;
+        lv_mem_monitor_t mon;
+        lv_mem_monitor(&mon);
+        Serial.printf("[loop] up=%lus bl=%u/%u flushes=%lu heap=%uK lvmem=%u%%\n",
+                      static_cast<unsigned long>(now / 1000),
+                      unsigned(backlight_current_level()),
+                      unsigned(backlight_target_level()),
+                      static_cast<unsigned long>(panel_flush_count()),
+                      unsigned(ESP.getFreeHeap() / 1024),
+                      unsigned(mon.used_pct));
     }
 
     lv_timer_handler();
