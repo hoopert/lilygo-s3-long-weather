@@ -54,7 +54,7 @@ Full instructions, including the command-line and PlatformIO paths:
 | **Swipe down** | Quick settings drop from the top: brightness, refresh, Wi-Fi |
 | **Swipe up** | Close whatever is open |
 | **Press and hold** | Fetch a new forecast now |
-| **BOOT button** — short | Step brightness down one rung, wrapping back to Auto |
+| **BOOT button** — short | Bright → medium → dim → back to Auto |
 | **BOOT button** — double | Straight back to Auto brightness |
 | **BOOT button** — hold | Blank the display; any touch or press wakes it |
 

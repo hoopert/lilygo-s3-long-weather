@@ -18,7 +18,7 @@ int s_count = 0;
 int s_current = 0;
 bool s_started = false;
 
-uint32_t s_last_gesture_ms = 0;
+bool s_gesture_this_press = false;
 
 void gesture_cb(lv_event_t *e) {
     LV_UNUSED(e);
@@ -76,11 +76,25 @@ void build_indicator(lv_obj_t *screen, int index) {
 
 }  // namespace
 
-void ui_note_gesture() { s_last_gesture_ms = millis(); }
+void ui_note_gesture() {
+    s_gesture_this_press = true;
 
-bool ui_gesture_recent() {
-    return (millis() - s_last_gesture_ms) < GESTURE_CLICK_SUPPRESS_MS;
+    // The rest of this press belongs to the swipe. LVGL would otherwise send
+    // RELEASED and CLICKED to whatever was under the finger when it first
+    // touched down - on the screen that has since slid away - however long
+    // the finger stays down after the swipe. wait_release makes it forget
+    // the press instead: nothing more is delivered until the next touch.
+    lv_indev_t *indev = lv_indev_get_act();
+    if (indev) {
+        lv_obj_t *act = lv_indev_get_obj_act();
+        if (act) lv_obj_clear_state(act, LV_STATE_PRESSED);
+        lv_indev_wait_release(indev);
+    }
 }
+
+void ui_note_press_start() { s_gesture_this_press = false; }
+
+bool ui_gesture_recent() { return s_gesture_this_press; }
 
 void screens_register(const ScreenDef &def) {
     if (s_count >= kMaxScreens) {

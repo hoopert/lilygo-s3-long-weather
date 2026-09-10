@@ -81,12 +81,15 @@ int  screens_current_position();
 // and drops anything the active context did not ask for.
 void ui_handle_swipe(lv_dir_t dir);
 
-// Swipe/click disambiguation. LVGL delivers LV_EVENT_CLICKED on release even
-// when the same press already produced a gesture, so every gesture handler
-// calls ui_note_gesture() and every click handler ignores the click while
-// ui_gesture_recent() is true. Without this, swiping left across the hourly
-// strip changes screen and opens an hour detail overlay at the same time.
+// Swipe/click disambiguation. A swipe is a swipe and a tap is a tap: once a
+// press has produced a gesture, nothing else from that press counts.
+// ui_note_gesture() tells LVGL to forget the press (lv_indev_wait_release),
+// so no RELEASED or CLICKED reaches the object first touched - which is on
+// the screen that has just slid away. ui_gesture_recent() is the belt to
+// that brace: true from the gesture until the next touch begins, which the
+// touch driver reports through ui_note_press_start().
 void ui_note_gesture();
+void ui_note_press_start();
 bool ui_gesture_recent();
 
 // The page indicator the manager drew on this screen's root, or nullptr before

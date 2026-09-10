@@ -67,7 +67,10 @@ constexpr int kRivetPitch  = 16;
 constexpr int kRivetCount  = 10;                   // y16 .. y160
 
 // --- Night Mode: a clock, and nothing else ----------------------------------
-constexpr int kClockY = 18;   // 128px digits, centred; the colon sits mid-height
+// Centred on the screen. Digits have no descenders, so they sit high in the
+// font's line box; the nudge puts the digits themselves, not the box, in the
+// middle of the glass.
+constexpr int kClockNudgeY = 10;
 
 struct HourWidgets {
     lv_obj_t *cell;        // invisible hit target, carries the index
@@ -478,7 +481,7 @@ lv_obj_t *create(lv_obj_t *parent) {
     s_ui.night_clock = theme_label(night, &font_clock, COL_NIGHT_HERO, "");
     lv_obj_set_width(s_ui.night_clock, UI_WIDTH);
     lv_obj_set_style_text_align(s_ui.night_clock, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_pos(s_ui.night_clock, 0, kClockY);
+    lv_obj_align(s_ui.night_clock, LV_ALIGN_CENTER, 0, kClockNudgeY);
 
     // --- root: shared between the layouts ------------------------------------
     s_ui.hero = theme_label(parent, &font_hero, COL_OAT, "--");

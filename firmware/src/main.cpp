@@ -62,6 +62,9 @@ void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     // is applied here to the touch, in reverse. Same two mappings as
     // panel_push_frame(), inverted.
     data->state = p.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    static bool s_was_pressed = false;
+    if (p.pressed && !s_was_pressed) ui_note_press_start();
+    s_was_pressed = p.pressed;
     if (p.pressed) {
         if (UI_ROTATION == LV_DISP_ROT_270) {
             data->point.x = p.y;
