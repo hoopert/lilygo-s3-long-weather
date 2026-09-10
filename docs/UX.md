@@ -90,14 +90,16 @@ rather than a single action:
 
 | Press | Result |
 |---|---|
-| **Short** | Step brightness down one rung: bright (100%) → medium (43%) → dim (12%) → Auto → … |
+| **Short** | The bar's lowest division → its middle → its highest → Auto → … |
 | **Double** | Straight back to Auto |
 | **Long (800ms)** | Blank the display. Any touch or press wakes it. |
 
 The rule a hand reaching for an unlabelled button in the dark can rely on is
-*every press is dimmer than the last, until it wraps back to Auto.* Entering the
-ladder from Auto lands on the first rung genuinely dimmer than what is currently
-on screen, so the first press always visibly does something.
+*every press is brighter than the last, until it hands back to Auto.* From Auto
+the first press lands on the bar's lowest division; from a level set on the
+bar, on the next of the three rungs above it. A level set either way holds
+until the sun moves the panel into a different part of its day - dawn, day,
+dusk, night, the small hours - or the panel resets; then Auto takes over.
 
 Long press fires on the threshold rather than on release, so the display blanks
 under your thumb instead of after you let go.
@@ -149,25 +151,25 @@ with a LOW / MEDIUM / HIGH word. Any HIGH turns the outlook word and the
 header glyph sunset. The rules are `design/logic.json`, implemented in
 `ui/pressure_logic.cpp` and checked against the JSON in CI.
 
-**Quick Settings** — a 130px sheet that drops from the top edge over a 70%
-scrim, so the screen beneath stays legible at 30%. Three control columns:
-brightness (the level, a slider, and what the dimmer is doing - `SUN-DRIVEN ·
-DIMS AT 7:18 PM` or `MANUAL · AUTO IN 3H 42M`) with an **AUTO** pill that is
-filled turquoise while auto-dimming is engaged and drops to `surface-hi` once
-an explicit level has taken over; forecast (a **REFRESH** pill with the age of
-the data beneath it); and Wi-Fi (four signal bars and the SSID). The IP and
-OTA hostname sit in the header. A tap on the scrim or a swipe up closes it;
-the drag handle at the bottom says so.
+**Quick Settings** — the whole screen. A brightness bar the full width and a
+fingertip tall, divided into nine: tap a division and the bar fills to it and
+the glass takes that level at once; drag and both follow the finger for fine
+tuning. Beside it the level and an **AUTO** pill, filled turquoise while the
+sun is driving and `surface-hi` once a level has been set by hand; beneath,
+what the dimmer is doing (`SUN-DRIVEN · DIMS AT 7:18 PM`, `MANUAL · AUTO AT
+DUSK`). The second row is the forecast's age with a refresh glyph beside it,
+and the Wi-Fi bars with the SSID. Nothing the System screen already shows. A
+tap on empty space or a swipe up closes it.
 
 ## Night Mode
 
-After 23:00 local, in Auto, with nobody in front of the panel, the backlight
-is aiming at its deep-night floor and the Today screen cross-fades over 1500ms
-to a clock: 128px digits in dim oat, `h:mm`, centred on an otherwise empty
-screen, at backlight 16 - the dimmest level this glass can show legibly. It
-is a nightlight that knows the time, not a screen. Any touch is a presence
-boost, which lifts the backlight target and brings the weather back the same
-way. Manual and Off modes never enter it. (The design's §5 night layout, a
+After 23:00 local, thirty seconds after the last touch, the Today screen
+cross-fades over 1500ms to a clock: 128px digits in dim oat, `h:mm`, centred
+on an otherwise empty screen, at backlight 16 - the dimmest level this glass
+can show legibly. It is a nightlight that knows the time, not a screen. A
+manual level does not prevent it. Any touch brings the weather back the same
+way, at whatever level was set before the clock - the manual one if there was
+one, otherwise the sun's. Off never enters it. (The design's §5 night layout, a
 dimmer weather strip, was built and replaced by the clock after the third
 flash.)
 
@@ -204,7 +206,8 @@ never appears in the repository or the firmware image.
 |---|---|---|
 | Screen to screen | 280ms | horizontal slide, in-out |
 | Overlay in | 220ms | slide up 24px + fade, ease-out |
-| Brightness ramp | 1500ms | cosine — deliberately imperceptible |
+| Brightness ramp (solar, night clock) | 1500ms | cosine — deliberately imperceptible |
+| Brightness set by hand | 80ms | the glass follows the finger |
 | Wake from blank | 250ms | fast; waking should feel instant |
 | Press feedback | 90ms | fill changes to `surface-hi` (no scale: a zoomed widget needs an alpha layer this 16-bit build cannot draw) |
 | Night Mode in / out | 1500ms | cross-fade, ease in-out, locked to the brightness ramp |

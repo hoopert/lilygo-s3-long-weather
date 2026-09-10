@@ -7,14 +7,17 @@
 //   1. The sun. Open-Meteo returns sunrise and sunset for the panel's own
 //      location, so brightness follows a real solar curve that stays correct
 //      when the trailer moves. This is the ambient baseline.
-//   2. Presence. Any touch or button press means someone is standing in front
-//      of the panel, so it lifts to full and eases back down afterwards.
-//   3. Intent. An explicit brightness choice wins over both, and then expires,
-//      so a 2am nudge does not leave the panel dark all the next day.
+//   2. Intent. An explicit level - the brightness bar or the BOOT button -
+//      wins over the sun and holds until the sun moves the panel into a
+//      different part of its day (dawn, day, dusk, night, the small hours)
+//      or the panel resets. Then Auto takes over again.
+//   3. Presence. In the small hours, with nobody about, the panel becomes a
+//      night clock at the deep-night floor. Any touch brings back whatever
+//      level was set before - manual or solar - not a boost.
 //
-// Every transition is cosine-eased over BL_FADE_MS. You should never catch the
-// panel changing brightness - you should only ever notice that it was already
-// right.
+// Solar transitions are cosine-eased over BL_FADE_MS; a manual set follows
+// the finger. You should never catch the sun changing the brightness - only
+// notice that it was already right.
 #pragma once
 
 #include <stdint.h>
@@ -22,7 +25,7 @@
 
 enum class BacklightMode : uint8_t {
     Auto,      // following the solar curve
-    Manual,    // an explicit level, reverts to Auto after BL_MANUAL_REVERT_MS
+    Manual,    // an explicit level; holds until the next solar phase change
     Off,       // display blanked; any touch or button press wakes it
 };
 
@@ -52,9 +55,10 @@ long backlight_utc_offset();
 void backlight_set_immediate(uint8_t level);
 
 // --- control surface -------------------------------------------------------
-void          backlight_set_manual(uint8_t level);   // 0-255, enters Manual
+void          backlight_set_manual(uint8_t level);   // BL_LEVEL_MIN-255, enters Manual, applies now
 void          backlight_set_auto();
-void          backlight_cycle_step();                // BOOT short press
+void          backlight_cycle_step();                // BOOT short press: lowest, middle, highest, Auto
+const uint8_t *backlight_presets();                  // BL_PRESET_COUNT levels, dimmest first
 void          backlight_toggle_off();                // BOOT long press
 bool          backlight_is_off();
 BacklightMode backlight_mode();
@@ -65,14 +69,14 @@ uint8_t backlight_target_level();
 uint8_t backlight_current_level();
 
 // The solar anchors the curve is built on, as seconds since local midnight,
-// and how long a manual level has left before Auto takes over (0 in Auto).
-// Quick Settings turns these into "DIMS AT 7:18 PM" / "AUTO IN 3H 42M".
-int      backlight_sunrise_sod();
-int      backlight_sunset_sod();
-uint32_t backlight_manual_remaining_ms();
+// and whether the panel is in the daytime part of its curve. Quick Settings
+// turns these into "DIMS AT 7:18 PM" / "AUTO AT DUSK".
+int  backlight_sunrise_sod();
+int  backlight_sunset_sod();
+bool backlight_is_daytime();
 
-// True while the auto-dimmer is aiming at the deep-night floor: Auto mode, the
-// small hours, and nobody in front of the panel. The Today screen swaps to its
-// Night Mode layout on this and back the moment it clears - a presence boost
-// lifts the target, so a touch is what ends the night (design/SPEC.md §5).
+// True while the panel is a night clock: the small hours, nobody in front of
+// the panel for BL_PRESENCE_HOLD_MS, and not Off. The Today screen shows the
+// clock on this and the weather again the moment it clears - a touch is what
+// ends the night.
 bool backlight_is_deep_night();

@@ -51,10 +51,10 @@ Full instructions, including the command-line and PlatformIO paths:
 | **Tap the pressure** | The last 24 hours of pressure, the trend, and what it means for joints, migraines, sinuses and heart |
 | **Swipe left** | The ten-day forecast (swipe right to come back) |
 | **Swipe right** | Open the System drawer (swipe left to put it away) |
-| **Swipe down** | Quick settings drop from the top: brightness, refresh, Wi-Fi |
+| **Swipe down** | Quick settings: a big brightness bar you tap or drag, refresh, Wi-Fi |
 | **Swipe up** | Close whatever is open |
 | **Press and hold** | Fetch a new forecast now |
-| **BOOT button** — short | Bright → medium → dim → back to Auto |
+| **BOOT button** — short | Lowest → middle → highest brightness → back to Auto |
 | **BOOT button** — double | Straight back to Auto brightness |
 | **BOOT button** — hold | Blank the display; any touch or press wakes it |
 

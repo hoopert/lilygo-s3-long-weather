@@ -243,7 +243,16 @@ trailer. The ask was fewer hours, and the first cut over-read it and dropped the
 ribbon, rain and wind rows too; they are back. The strip is the design's,
 in eight 52px columns instead of ten. Night Mode is no longer a dimmer
 weather layout: it is a clock, `h:mm` in a 128px cut (`font_clock`) and
-nothing else, because a nightlight has one thing to say. A ten-day **Forecast** screen sits one
+nothing else, because a nightlight has one thing to say.
+
+Quick Settings (§4) is no longer a sheet: the whole screen, with a nine-
+division brightness bar a fingertip tall that is tapped for a preset or
+dragged for fine tuning, both applied to the glass at once; the IP and
+update host leave it for System. The brightness model changed with it: a
+manual level holds until the sun moves the panel into a different phase of
+its day or the panel resets, the night clock takes over after thirty
+seconds without a touch in the small hours whatever the mode, and a touch
+restores the previous level rather than boosting to full. A ten-day **Forecast** screen sits one
 swipe left of Today (`screen_forecast.cpp`, position +1), fed by
 Open-Meteo's daily rows (`forecast_days=10`, with the hourly window bounded
 by `forecast_hours` so the body stays small). The deep-night backlight
