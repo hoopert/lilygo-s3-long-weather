@@ -26,12 +26,18 @@ mode by hand: **hold BOOT, tap RST, release BOOT**, then press Install again.
 
 ### Then: Wi-Fi
 
-The panel comes up showing `JOIN WI-FI "Airstream-Weather" FROM YOUR PHONE`.
+The panel comes up on a **GET STARTED** screen showing the name of its own
+setup network, `Airstream-Weather`, an eight-digit password, and a QR code.
 
-1. On your phone, join the **`Airstream-Weather`** network. It is open, and it
-   is local to the panel — it is not connected to anything.
+1. Point your phone's camera at the code and tap the prompt to join. Or join
+   **`Airstream-Weather`** by hand and type the password off the screen. The
+   network is local to the panel — it is not connected to anything.
 2. A setup page opens by itself. (If it does not, browse to `192.168.4.1`.)
 3. Choose your network, enter the password, and **Save**.
+
+The setup password is generated on the panel's first boot and kept there; it
+is not in this repository or in the firmware image, and it changes each time
+you press **CHANGE NETWORK**.
 
 **Leave the latitude and longitude fields blank.** The panel will locate itself
 from its IP address and re-locate every time it moves, which is what you want in

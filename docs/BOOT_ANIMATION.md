@@ -1,5 +1,11 @@
 # Boot animation: design constraints
 
+> **Delivered.** The design pass answered this brief with the boot screen of
+> `design/SPEC.md` §6 (rivet rows, a rotating quarter-arc, a status line that
+> steps through the connection), now shipped in `firmware/src/ui/startup.cpp`.
+> The constraints below still hold for anyone who wants to replace it with
+> something more elaborate.
+
 The brief for whoever designs the boot sequence - a person, or Claude Design.
 Everything here is measured from the firmware as it runs today; nothing is
 aspirational. Where a number is a budget rather than a hard limit it says so.

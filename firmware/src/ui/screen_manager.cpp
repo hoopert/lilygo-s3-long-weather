@@ -143,6 +143,12 @@ void screens_begin() {
     screens_update_all();
 }
 
+void screens_reveal(uint32_t fade_ms) {
+    if (!s_started || s_roots[s_current] == nullptr) return;
+    if (lv_scr_act() == s_roots[s_current]) return;
+    lv_scr_load_anim(s_roots[s_current], LV_SCR_LOAD_ANIM_FADE_IN, fade_ms, 0, true);
+}
+
 void screens_show(int index, bool animate) {
     if (!s_started || index < 0 || index >= s_count || index == s_current) return;
 

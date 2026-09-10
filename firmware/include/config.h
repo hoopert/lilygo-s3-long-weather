@@ -64,7 +64,11 @@
 // Setup portal
 // ---------------------------------------------------------------------------
 #define WIFI_AP_NAME     "Airstream-Weather"
-#define WIFI_AP_PASSWORD ""            // open network; the portal is local-only
+// The setup network is WPA2. Its password is not here: eight digits are
+// generated on first boot, kept in NVS, shown on the setup screen (and in
+// its QR code), and rotated by CHANGE NETWORK. WPA2-PSK needs eight
+// characters, which is why it is not six.
+#define WIFI_AP_PASSWORD_LEN 8
 #define OTA_HOSTNAME     "airstream-weather"
 #define SETUP_PORTAL_TIMEOUT_S 0       // 0 = stay up until configured
 

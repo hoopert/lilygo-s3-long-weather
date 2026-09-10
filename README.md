@@ -31,8 +31,9 @@ press one button. No toolchain, no API key, no editing source.
 
 1. Open the installer page in Chrome, Edge, or Opera on a desktop.
 2. Press **Install firmware** and pick the board's serial port.
-3. When the panel comes up, join the Wi-Fi network `Airstream-Weather` from your
-   phone. A setup page opens by itself — choose your network, save, done.
+3. When the panel comes up, scan the code on its screen with your phone (or
+   join `Airstream-Weather` with the password shown). A setup page opens by
+   itself — choose your network, save, done.
 
 Leave the location fields blank and the panel finds itself from its IP address,
 and keeps doing so every time you move. That is the right default for something

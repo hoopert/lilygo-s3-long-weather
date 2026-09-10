@@ -33,6 +33,7 @@ String   net_ip();
 int      net_rssi();          // dBm
 uint8_t  net_signal_bars();   // 0-4, for the UI
 const char *net_ap_name();
+const char *net_ap_password();   // eight digits; see WIFI_AP_PASSWORD_LEN
 
 // Stored preferences, set from the portal.
 float net_pref_latitude();
