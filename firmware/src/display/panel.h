@@ -11,8 +11,14 @@
 
 #include <stdint.h>
 
-// Brings up the QSPI bus and runs the AXS15231B init sequence.
+// Brings up the QSPI bus, runs the AXS15231B init sequence, then prints
+// panel_report().
 void panel_init();
+
+// Reads the controller's identity and power-mode registers back over QSPI and
+// prints them. The "power mode" line is the fastest way to tell a panel that
+// never heard a command from one that is on and showing whatever it was sent.
+void panel_report();
 
 // Blits a rectangle of RGB565 pixels. Blocks until the transfer completes.
 void panel_push_pixels(uint16_t x, uint16_t y, uint16_t w, uint16_t h,

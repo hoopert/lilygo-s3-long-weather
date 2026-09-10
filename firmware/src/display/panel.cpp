@@ -9,29 +9,52 @@
 
 namespace {
 
-spi_device_handle_t s_spi = nullptr;
+spi_device_handle_t s_spi = nullptr;        // 32MHz, writes
+spi_device_handle_t s_spi_slow = nullptr;   // 4MHz, register reads only
 uint32_t s_flush_count = 0;
 
 struct LcdCmd {
-    uint8_t cmd;
-    uint8_t data[36];
-    uint8_t len;   // bit7: delay 200ms after, bit6: delay 20ms after, bits0-5: byte count
+    uint8_t  cmd;
+    uint8_t  data[4];
+    uint8_t  len;        // parameter bytes
+    uint16_t delay_ms;   // settle time after the command
 };
 
-// The vendor's QSPI init sequence, reproduced verbatim. It is terse because the
-// AXS15231B on this board boots with a usable register set already loaded from
-// its own OTP; all this does is wake it and turn the display on.
+// Init sequence. It is the union of the two sequences known to light this
+// exact glass, in the order the MIPI DCS spec wants them:
+//
+//   - LilyGO's factory driver (examples/factory/AXS15231B.cpp) sends only
+//     DISPOFF, SLPIN, SLPOUT, DISPON and relies on the controller's OTP
+//     defaults for everything else. It works on their bench, but their own
+//     source carries a comment about re-running it "to prevent initialization
+//     failure", which is not confidence-inspiring on a panel that shows black.
+//   - Arduino_GFX's Arduino_AXS15231 (LilyGO ships an example on it too)
+//     states the things the factory driver leaves to chance: normal display
+//     mode, inversion off, 16-bit pixel format, brightness-control block.
+//
+// Nothing here is specific to a panel batch; every register below is a
+// standard DCS user command. The vendor's long manufacturer-register table
+// (axs15231b_qspi_init_new) is deliberately not used - it retunes gamma and
+// power for one particular glass and is unused in their shipped firmware.
 const LcdCmd kInitSequence[] = {
-    {0x28, {0x00}, 0x40},   // display off,  +20ms
-    {0x10, {0x00}, 0x20},   // sleep in
-    {0x11, {0x00}, 0x80},   // sleep out,    +200ms
-    {0x29, {0x00}, 0x00},   // display on
+    {0x28, {0},    0,  20},   // DISPOFF
+    {0x10, {0},    0, 120},   // SLPIN
+    {0x11, {0},    0, 200},   // SLPOUT  - the long one, panel regulator settles
+    {0x13, {0},    0,   0},   // NORON   - normal (not partial) display mode
+    {0x20, {0},    0,   0},   // INVOFF
+    {0x3A, {0x05}, 1,   0},   // COLMOD  - 16 bits per pixel, RGB565
+    {0x29, {0},    0,  20},   // DISPON
+    {0x53, {0x28}, 1,   0},   // WRCTRLD - brightness control + dimming on
+    {0x51, {0x00}, 1,   0},   // WRDISBV - panel-side brightness (unused; BL is a GPIO)
+    {0x58, {0x00}, 1,  10},   // WRCE    - sunlight-readability enhancement off
 };
 
 inline void cs_low()  { digitalWrite(PIN_LCD_CS, LOW); }
 inline void cs_high() { digitalWrite(PIN_LCD_CS, HIGH); }
 
-// Single command + parameters, sent on one data line (QSPI cmd 0x02 path).
+// Single command + parameters, sent on one data line (QSPI opcode 0x02: the
+// controller takes 0x02, then a 24-bit "address" of 00 <cmd> 00, then the
+// parameter bytes).
 void send_cmd(uint8_t cmd, const uint8_t *data, uint32_t len) {
     cs_low();
 
@@ -47,6 +70,30 @@ void send_cmd(uint8_t cmd, const uint8_t *data, uint32_t len) {
     spi_device_polling_transmit(s_spi, &t);
 
     cs_high();
+}
+
+// Register read (QSPI opcode 0x03, same 00 <cmd> 00 address, then dummy
+// clocks, then the reply on D0). Goes over the slow device so the SPI driver
+// does not insert its own timing-compensation dummy bits and shift the reply.
+// `len` is 1..4. Returns false only if the SPI driver refused the transaction;
+// a panel that is not answering returns true with all-0x00 or all-0xFF data.
+bool read_reg(uint8_t reg, uint8_t dummy_bits, uint8_t *out, uint8_t len) {
+    spi_transaction_ext_t t;
+    memset(&t, 0, sizeof(t));
+    t.base.flags    = SPI_TRANS_MULTILINE_CMD | SPI_TRANS_MULTILINE_ADDR |
+                      SPI_TRANS_USE_RXDATA | SPI_TRANS_VARIABLE_DUMMY;
+    t.base.cmd      = 0x03;
+    t.base.addr     = static_cast<uint32_t>(reg) << 8;
+    t.base.rxlength = 8 * len;
+    t.dummy_bits    = dummy_bits;
+
+    cs_low();
+    const esp_err_t err = spi_device_polling_transmit(
+        s_spi_slow, reinterpret_cast<spi_transaction_t *>(&t));
+    cs_high();
+
+    memcpy(out, t.base.rx_data, len);
+    return err == ESP_OK;
 }
 
 void set_address_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2) {
@@ -94,10 +141,66 @@ void panel_init() {
     ESP_ERROR_CHECK(spi_bus_initialize(LCD_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
     ESP_ERROR_CHECK(spi_bus_add_device(LCD_SPI_HOST, &devcfg, &s_spi));
 
+    // A second handle on the same bus for reads. Slow enough that the driver
+    // needs no compensation dummy cycles (NO_DUMMY makes it refuse if not).
+    spi_device_interface_config_t slowcfg = devcfg;
+    slowcfg.clock_speed_hz = 4000000;
+    slowcfg.flags          = SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_NO_DUMMY;
+    slowcfg.queue_size     = 1;
+    ESP_ERROR_CHECK(spi_bus_add_device(LCD_SPI_HOST, &slowcfg, &s_spi_slow));
+
     for (const LcdCmd &c : kInitSequence) {
-        send_cmd(c.cmd, c.data, c.len & 0x3F);
-        if (c.len & 0x80) delay(200);
-        if (c.len & 0x40) delay(20);
+        send_cmd(c.cmd, c.data, c.len);
+        if (c.delay_ms) delay(c.delay_ms);
+    }
+
+    panel_report();
+}
+
+void panel_report() {
+    // Ask the controller what state it thinks it is in. This is the one line
+    // that separates "the panel never heard us" from "the panel is on and
+    // showing what we send" without a scope on the bus.
+    //
+    // The AXS15231B's read opcode wants dummy clocks between address and data;
+    // the datasheet is thin on how many, so both plausible counts are shown.
+    // Whichever column decodes sensibly is the right one; if both are all
+    // 00 or all FF for every register, the panel is not answering at all.
+    struct Reg { uint8_t reg; uint8_t len; const char *name; };
+    const Reg regs[] = {
+        {0x04, 4, "RDDID   "},   // manufacturer / version / driver id
+        {0x0A, 1, "RDDPM   "},   // power mode: bit7 booster, bit4 sleep-out, bit3 normal, bit2 display-on
+        {0x0C, 1, "RDDCOLMOD"},  // pixel format: 0x05 = 16bpp
+        {0x0D, 1, "RDDIM   "},   // image mode: bit5 inversion
+    };
+    bool any_signal = false;
+    for (const Reg &r : regs) {
+        uint8_t d8[4] = {0}, d0[4] = {0};
+        read_reg(r.reg, 8, d8, r.len);
+        read_reg(r.reg, 0, d0, r.len);
+        Serial.printf("[panel] %s (%02X)  dummy8:", r.name, r.reg);
+        for (uint8_t i = 0; i < r.len; i++) Serial.printf(" %02X", d8[i]);
+        Serial.print("  dummy0:");
+        for (uint8_t i = 0; i < r.len; i++) Serial.printf(" %02X", d0[i]);
+        Serial.println();
+        for (uint8_t i = 0; i < r.len; i++) {
+            if ((d8[i] != 0x00 && d8[i] != 0xFF) || (d0[i] != 0x00 && d0[i] != 0xFF)) any_signal = true;
+        }
+    }
+
+    uint8_t pm = 0;
+    read_reg(0x0A, 8, &pm, 1);
+    if (!any_signal) {
+        Serial.println("[panel] no reply on QSPI: every register reads 00/FF. Either the "
+                       "controller is not powered/reset, or the read opcode format "
+                       "is not what this revision speaks (writes may still work).");
+    } else {
+        Serial.printf("[panel] power mode 0x%02X: booster %s, sleep %s, %s mode, display %s\n",
+                      pm,
+                      (pm & 0x80) ? "on" : "OFF",
+                      (pm & 0x10) ? "out" : "IN",
+                      (pm & 0x08) ? "normal" : "partial",
+                      (pm & 0x04) ? "ON" : "OFF");
     }
 }
 
