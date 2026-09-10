@@ -32,6 +32,8 @@ bool  s_confirm_forget = false;
 lv_obj_t *s_forget_btn = nullptr;
 lv_obj_t *s_forget_lbl = nullptr;
 uint32_t s_confirm_at = 0;
+lv_obj_t *s_add_btn = nullptr;
+lv_obj_t *s_add_lbl = nullptr;
 
 // Four columns of label/value pairs across the strip, two rows deep, in the
 // same Micro-over-Body pattern the overlays use.
@@ -76,6 +78,15 @@ void forget_cb(lv_event_t *e) {
         return;
     }
     net_forget_and_restart();
+}
+
+// One tap, no confirmation: unlike forget, this only adds - it cannot lose a
+// network already saved, so there is nothing here worth a wall-mounted mistap
+// protecting against.
+void add_network_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    if (ui_gesture_recent()) return;
+    net_add_network_portal();
 }
 
 lv_obj_t *create(lv_obj_t *parent) {
@@ -128,6 +139,23 @@ lv_obj_t *create(lv_obj_t *parent) {
     lv_obj_set_style_text_letter_space(s_forget_lbl, 1, 0);
     lv_obj_center(s_forget_lbl);
 
+    // Sits to the left of CHANGE WI-FI NETWORK: that one forgets everything,
+    // this one only ever adds. Keeping the destructive action on the right
+    // (thumb-adjacent on this landscape strip) and the safe one on the left
+    // is the same left-safe/right-risky ordering the two share a row for.
+    s_add_btn = lv_btn_create(parent);
+    lv_obj_remove_style_all(s_add_btn);
+    lv_obj_set_size(s_add_btn, 112, 22);
+    lv_obj_align_to(s_add_btn, s_forget_btn, LV_ALIGN_OUT_LEFT_MID, -8, 0);
+    lv_obj_set_style_radius(s_add_btn, 11, 0);
+    lv_obj_set_style_bg_opa(s_add_btn, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(s_add_btn, lv_color_hex(COL_SURFACE), 0);
+    lv_obj_add_event_cb(s_add_btn, add_network_cb, LV_EVENT_CLICKED, nullptr);
+
+    s_add_lbl = theme_label(s_add_btn, &font_micro, COL_ALUMINUM_DIM, "ADD NETWORK");
+    lv_obj_set_style_text_letter_space(s_add_lbl, 1, 0);
+    lv_obj_center(s_add_lbl);
+
     return parent;
 }
 
@@ -142,13 +170,24 @@ void update(lv_obj_t *root) {
         lv_obj_set_style_text_color(s_forget_lbl, lv_color_hex(COL_ALUMINUM_DIM), 0);
     }
 
+    // The ADD NETWORK button doubles as its own status: turquoise and
+    // relabelled while its portal is reachable, so there is no separate
+    // "portal is up" indicator to add elsewhere on a screen this dense.
+    const bool adding = net_portal_active();
+    lv_label_set_text(s_add_lbl, adding ? "AP UP - JOIN TO ADD" : "ADD NETWORK");
+    lv_obj_set_style_bg_color(
+        s_add_btn, lv_color_hex(adding ? COL_TURQUOISE : COL_SURFACE), 0);
+    lv_obj_set_style_text_color(
+        s_add_lbl, lv_color_hex(adding ? COL_GROUND : COL_ALUMINUM_DIM), 0);
+
     const bool up = net_connected();
     lv_label_set_text(s_wifi_icon, up ? ICON_WIFI : ICON_WIFI_OFF);
     lv_obj_set_style_text_color(
         s_wifi_icon, lv_color_hex(up ? COL_TURQUOISE : COL_SUNSET), 0);
 
     if (up) {
-        set_field(0, "%s  %d dBm", net_ssid().c_str(), net_rssi());
+        set_field(0, "%s  %d dBm  ·  %u known", net_ssid().c_str(), net_rssi(),
+                  unsigned(net_known_network_count()));
     } else if (net_state() == NetState::Portal) {
         set_field(0, "AP: %s", net_ap_name());
     } else {

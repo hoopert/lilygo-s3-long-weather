@@ -39,8 +39,20 @@ float net_pref_latitude();
 float net_pref_longitude();
 bool  net_pref_imperial();
 
-// Forget Wi-Fi credentials and reboot into the setup portal.
+// Forget every saved network - the known-network list and WiFiManager's own
+// last credentials - and reboot into the setup portal.
 void net_forget_and_restart();
+
+// Opens the setup portal for one more network *without* forgetting any that
+// are already saved, and without dropping the current connection if there is
+// one (WiFiManager keeps STA up alongside the portal's AP). Auto-closes after
+// WIFI_ADD_NETWORK_TIMEOUT_S if nobody finishes it.
+void net_add_network_portal();
+
+// How many networks are remembered, and whether the add/setup portal's AP is
+// reachable right now - for the System screen's status line and button label.
+uint8_t net_known_network_count();
+bool    net_portal_active();
 
 // True once SNTP has produced a plausible wall clock.
 bool net_time_valid();
