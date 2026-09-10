@@ -34,7 +34,12 @@ float s_lon = WX_DEFAULT_LON;
 bool  s_imperial = WX_DEFAULT_UNITS_IMPERIAL;
 
 void load_prefs() {
-    s_prefs.begin("airstream", true);
+    // Read-write rather than read-only, even though this only reads. Opening a
+    // namespace read-only before it exists makes nvs_open fail, and the Arduino
+    // Preferences wrapper logs that at error level - so a completely healthy
+    // first boot prints "nvs_open failed: NOT_FOUND", which is alarming and
+    // means nothing. Opening read-write creates the namespace instead.
+    s_prefs.begin("airstream", false);
     s_lat      = s_prefs.getFloat("lat", WX_DEFAULT_LAT);
     s_lon      = s_prefs.getFloat("lon", WX_DEFAULT_LON);
     s_imperial = s_prefs.getBool("imperial", WX_DEFAULT_UNITS_IMPERIAL);
