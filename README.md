@@ -9,19 +9,18 @@ monitoring and controlling things in an Airstream, so the architecture is
 deliberately ready for more screens than it currently ships with.
 
 ```
-┌──────────────────────────────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
-│                              │ NOW  │ 3PM  │ 4PM  │ 5PM  │ 6PM  │ 7PM  │ 8PM  │ 9PM  │ 10PM │ 11PM │
-│  ╭───╮                  ☀    │  ☀   │  ☀   │  ⛅  │  ⛅  │  ☁   │  🌧  │  🌧  │  ☁   │  ☾   │  ☾   │
-│  │ 7 │2°                     │  72  │  74  │  73  │  70  │  66  │  62  │  59  │  57  │  55  │  54  │
-│  ╰───╯                       │                                                                     │
-│                              │        ╭──────╮                                                     │
-│  Partly Cloudy               │ ───────╯      ╰────╮      trend ribbon                              │
-│  FEELS 71° · H 84° L 58°     │                    ╰──────────╮                                     │
-│                              │                               ╰─────────────────────────            │
-│  DENVER · 2:35P · 4 MIN AGO  │              20%   45%   60%   30%                                  │
-│                              │  ↗8   ↗9    ↑12   ↑14   ↖9    ↖7    ←5                              │
-└──────────────────────────────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
-   ← 208px "Now" zone ─────────→  ← ten 42px hour columns from x210 ─────────────────────────────→
+┌──────────────────────────────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┐
+│                              │       │       │       │       │       │       │       │       │
+│  ╭───╮                  ☀    │  NOW  │  3PM  │  4PM  │  5PM  │  6PM  │  7PM  │  8PM  │  9PM  │
+│  │ 7 │2°F                    │   ☀   │   ☀   │   ⛅   │   ⛅   │   ☁   │   🌧   │   🌧   │   ☁   │
+│  ╰───╯                       │       │       │       │       │       │       │       │       │
+│                              │  72   │  74   │  73   │  70   │  66   │  62   │  59   │  57   │
+│  Partly Cloudy               │       │       │       │       │       │       │       │       │
+│  FEELS 71° · H 84° L 58°     │       │       │       │       │       │       │       │       │
+│                              │       │       │       │       │       │       │       │       │
+│  DENVER · 2:35P · 4 MIN AGO  │       │       │       │       │       │       │       │       │
+└──────────────────────────────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┘
+   ← 208px "Now" zone ─────────→  ← eight 52px hour columns from x210; tap one for the detail ──→
 ```
 
 ## Install
@@ -49,6 +48,7 @@ Full instructions, including the command-line and PlatformIO paths:
 | **Tap an hour column** | That hour in a panel that opens out of the column — feels-like, humidity, rain chance *and* amount, wind, gusts. Tap a neighbouring hour to move the panel; tap the panel to close it |
 | **Tap the big temperature** | Now in full — a sun arc showing where you are in the day, high/low, UV, gusts, visibility, and the pressure outlook in words |
 | **Tap the pressure** | The last 24 hours of pressure, the trend, and what it means for joints, migraines, sinuses and heart |
+| **Swipe left** | The ten-day forecast (swipe right to come back) |
 | **Swipe right** | Open the System drawer (swipe left to put it away) |
 | **Swipe down** | Quick settings drop from the top: brightness, refresh, Wi-Fi |
 | **Swipe up** | Close whatever is open |

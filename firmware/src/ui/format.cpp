@@ -43,6 +43,15 @@ void fmt_clock_compact(time_t utc, long offset, char *out, size_t len) {
     snprintf(out, len, "%d:%02d%c", h12, m, (h < 12) ? 'A' : 'P');
 }
 
+void fmt_weekday(time_t utc, long offset, char *out, size_t len) {
+    static const char *const kDays[7] = {"THU", "FRI", "SAT", "SUN", "MON", "TUE", "WED"};
+    long long local = static_cast<long long>(utc) + offset;
+    long long days = local / 86400;
+    if (local < 0 && local % 86400 != 0) days--;
+    // 1970-01-01 was a Thursday.
+    snprintf(out, len, "%s", kDays[((days % 7) + 7) % 7]);
+}
+
 void fmt_temp(float value, char *out, size_t len) {
     if (isnan(value)) { snprintf(out, len, "--°"); return; }
     snprintf(out, len, "%d°", int(lroundf(value)));

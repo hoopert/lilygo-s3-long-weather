@@ -236,3 +236,14 @@ shows any more. The console is quieter: WiFiManager's log is off in favour
 of `[net]` lines, the captive-portal probe URLs have handlers so the core
 stops logging them, the heartbeat slows to once a minute after the first
 forecast, and Jost gains U+00D7 for `640 × 180`.
+
+Third flash, on the glass rather than the render: the ten-column strip
+with ribbon, rain bars and wind arrows was too crammed to read across a
+trailer. It is now eight columns of hour, 32px glyph and temperature
+(`icons_md`, a new cut), with everything else one tap away in Hour Detail;
+Night Mode shows four wide columns. A ten-day **Forecast** screen sits one
+swipe left of Today (`screen_forecast.cpp`, position +1), fed by
+Open-Meteo's daily rows (`forecast_days=10`, with the hourly window bounded
+by `forecast_hours` so the body stays small). The deep-night backlight
+floor moves from 12 to 16 and the minimum from 4 to 14: measured on this
+glass, 12 shows nothing, 14 is the first level that lights, 16 is legible.
