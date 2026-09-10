@@ -112,30 +112,11 @@ bulkhead behind a trim panel.
 
 ---
 
-## More than one network
+## Changing the Wi-Fi network later
 
-The panel remembers **every** network it has ever been given, not just the
-most recent. At boot, and any time it loses its connection, it scans and joins
-whichever known network answers strongest — useful for a trailer that has a
-regular handful of parking spots, each with its own Wi-Fi.
-
-Swipe to the **System** screen for two buttons:
-
-- **ADD NETWORK** opens the setup portal for one more network without
-  forgetting any that are already saved, and without dropping the current
-  connection — the forecast keeps updating while you join `Airstream-Weather`
-  from your phone and add the new one. It closes itself after three minutes if
-  left unused.
-- **CHANGE WI-FI NETWORK** forgets **all** saved networks and reboots into the
-  setup portal, as if freshly unboxed. It asks for a second tap to confirm — a
-  stray touch on a wall-mounted screen should not take the trailer's weather
-  offline.
-
-The System screen's NETWORK field shows how many are currently saved.
-
-Up to 8 networks are remembered; past that, ADD NETWORK logs why on the
-console instead of silently dropping one — forget one first if you are at the
-limit.
+Swipe to the **System** screen and press **CHANGE WI-FI NETWORK**. It asks for a
+second tap to confirm — a stray touch on a wall-mounted screen should not take
+the trailer's weather offline — and then reboots into the setup portal.
 
 ---
 
