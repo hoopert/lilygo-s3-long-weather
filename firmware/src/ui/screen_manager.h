@@ -61,6 +61,11 @@ void screens_register(const ScreenDef &def);
 // Builds every registered screen and shows home (position 0).
 void screens_begin();
 
+// Loads the current screen over whatever LVGL is showing - the boot screen,
+// which is not part of the strip - with a fade, deleting the old screen once
+// it has gone. A no-op if the current screen is already active.
+void screens_reveal(uint32_t fade_ms);
+
 // Navigation is by position, not registry index, so a screen only ever moves
 // to a neighbour it actually has. Unknown positions are ignored.
 void screens_show_position(int position, bool animate);

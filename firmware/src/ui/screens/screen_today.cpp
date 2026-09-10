@@ -599,12 +599,10 @@ void update(lv_obj_t *root) {
         place_hero_marks();
         lv_label_set_text(s_ui.condition,
                           net_connected() ? "Getting forecast" : "Setting up");
-        if (net_state() == NetState::Portal) {
-            snprintf(buf, sizeof(buf), "JOIN WI-FI \"%s\" FROM YOUR PHONE", net_ap_name());
-        } else {
-            snprintf(buf, sizeof(buf), "%s", net_connected() ? weather_status_text()
-                                                             : net_state_text());
-        }
+        // Normally unseen: the boot and setup screens cover this until the
+        // first forecast lands. It remains for the case where they cannot.
+        snprintf(buf, sizeof(buf), "%s", net_connected() ? weather_status_text()
+                                                         : net_state_text());
         lv_label_set_text(s_ui.meta, buf);
         lv_label_set_text(s_ui.place, "");
         lv_label_set_text(s_ui.status, "");

@@ -17,6 +17,8 @@ NetState    s_state = NetState::Booting;
 bool        s_ota_started = false;
 bool        s_portal_started = false;
 
+char s_ap_password[WIFI_AP_PASSWORD_LEN + 1] = "";
+
 char s_lat_buf[16]   = "";
 char s_lon_buf[16]   = "";
 char s_units_buf[4]  = "F";
@@ -33,6 +35,16 @@ float s_lat = WX_DEFAULT_LAT;
 float s_lon = WX_DEFAULT_LON;
 bool  s_imperial = WX_DEFAULT_UNITS_IMPERIAL;
 
+// Eight random digits. Digits only, so it can be read off the glass from
+// four feet and typed on a phone without hunting for a shift key; eight of
+// them because WPA2-PSK refuses fewer.
+void generate_ap_password() {
+    for (int i = 0; i < WIFI_AP_PASSWORD_LEN; i++) {
+        s_ap_password[i] = char('0' + esp_random() % 10);
+    }
+    s_ap_password[WIFI_AP_PASSWORD_LEN] = '\0';
+}
+
 void load_prefs() {
     // Read-write rather than read-only, even though this only reads. Opening a
     // namespace read-only before it exists makes nvs_open fail, and the Arduino
@@ -46,6 +58,14 @@ void load_prefs() {
     s_lat      = s_prefs.isKey("lat")      ? s_prefs.getFloat("lat")     : WX_DEFAULT_LAT;
     s_lon      = s_prefs.isKey("lon")      ? s_prefs.getFloat("lon")     : WX_DEFAULT_LON;
     s_imperial = s_prefs.isKey("imperial") ? s_prefs.getBool("imperial") : WX_DEFAULT_UNITS_IMPERIAL;
+    if (s_prefs.isKey("appw") &&
+        s_prefs.getString("appw", "").length() == WIFI_AP_PASSWORD_LEN) {
+        snprintf(s_ap_password, sizeof(s_ap_password), "%s", s_prefs.getString("appw").c_str());
+    } else {
+        generate_ap_password();
+        s_prefs.putString("appw", s_ap_password);
+        Serial.println("[net] generated a setup network password");
+    }
     s_prefs.end();
 
     if (s_lat != 0.0f) snprintf(s_lat_buf, sizeof(s_lat_buf), "%.4f", s_lat);
@@ -113,7 +133,7 @@ void net_begin() {
 
     s_state = NetState::Connecting;
 
-    if (s_wm.autoConnect(WIFI_AP_NAME)) {
+    if (s_wm.autoConnect(WIFI_AP_NAME, s_ap_password)) {
         s_state = NetState::Connected;
     } else {
         s_portal_started = true;
@@ -175,13 +195,20 @@ uint8_t net_signal_bars() {
     return 0;
 }
 
-const char *net_ap_name() { return WIFI_AP_NAME; }
+const char *net_ap_name()     { return WIFI_AP_NAME; }
+const char *net_ap_password() { return s_ap_password; }
 
 float net_pref_latitude()  { return s_lat; }
 float net_pref_longitude() { return s_lon; }
 bool  net_pref_imperial()  { return s_imperial; }
 
 void net_forget_and_restart() {
+    // A new setup password with the new network: whoever had the old one
+    // photographed does not keep a way in.
+    generate_ap_password();
+    s_prefs.begin("airstream", false);
+    s_prefs.putString("appw", s_ap_password);
+    s_prefs.end();
     s_wm.resetSettings();
     delay(250);
     ESP.restart();

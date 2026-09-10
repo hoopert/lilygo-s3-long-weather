@@ -29,6 +29,7 @@
 #include "ui/screen_manager.h"
 #include "ui/screens/screen_system.h"
 #include "ui/screens/screen_today.h"
+#include "ui/startup.h"
 #include "ui/theme.h"
 
 namespace {
@@ -169,8 +170,11 @@ void setup() {
     screens_register(screen_system_def());
     screens_begin();
 
-    // Draw the first frame before going near the network, so the panel is
-    // showing its setup message by the time anyone has looked at it.
+    // The boot screen goes over the strip until the first forecast lands, or
+    // the setup screen takes over. Draw its first frame before going near the
+    // network, so the panel is saying what it is doing by the time anyone
+    // has looked at it.
+    startup_show();
     lv_timer_handler();
 
     buttons_init();
@@ -193,6 +197,7 @@ void loop() {
     net_tick();
     buttons_tick();
     backlight_tick();
+    startup_tick();
 
     // A fresh forecast refreshes every screen, not just the visible one, so a
     // screen swiped to a moment later is already current.

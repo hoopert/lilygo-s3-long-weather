@@ -168,14 +168,26 @@ A wall-mounted display showing nothing is indistinguishable from a broken one,
 and boot is exactly when a new owner is watching it. So the panel always says
 what it is doing:
 
+From the first frame until the first forecast lands, the panel is on a
+**boot screen** (design/SPEC.md §6): two rivet rows, a quarter-turn of
+turquoise circling a 56px track once every 1.6 seconds, `AIRSTREAM WEATHER`,
+and a status line that cross-fades through the steps with the remaining ones
+listed beneath it in the quietest grey. It is a rate, not a progress bar,
+because nothing on the panel knows how long the router will take.
+
 | State | On screen |
 |---|---|
-| No Wi-Fi configured | `JOIN WI-FI "Airstream-Weather" FROM YOUR PHONE` |
-| Connecting | `CONNECTING TO WI-FI` |
-| Locating | `FINDING LOCATION` |
+| No Wi-Fi configured | The **setup screen** (§7): `GET STARTED`, the three steps, the network name in a turquoise chip, the eight-digit password grouped 4+4, and a QR code carrying the standard `WIFI:` URI so a phone camera joins in one tap |
+| Connecting | `CONNECTING TO WI-FI` — then `FINDING LOCATION · FETCHING FORECAST` |
+| Locating | `FINDING LOCATION` — then `FETCHING FORECAST` |
 | Fetching | `FETCHING FORECAST` |
-| Fetch failed | `NO CONNECTION` — retries every 60s by itself |
+| Fetch failed | `FETCHING FORECAST` — `NO ANSWER YET · TRYING AGAIN`; retries every 60s by itself |
+| Forecast ready | Today fades in over the boot screen in 400ms |
 | Connection lost, data still valid | Everything stays on screen with a small orange Wi-Fi-off mark; the "x min ago" line is never omitted, so stale data can never present itself as current |
+
+The setup network is WPA2. Its password is eight digits (WPA2's minimum),
+generated on first boot, kept in NVS, and rotated by **CHANGE NETWORK**; it
+never appears in the repository or the firmware image.
 
 ## Motion
 

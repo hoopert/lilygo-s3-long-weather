@@ -166,7 +166,15 @@ and System; the build date comes from `__DATE__`.
 - **Done when:** both artboards match; long values (`airstream-weather.local`,
   the coordinates) no longer wrap.
 
-### Phase 7 - Boot / Connecting (§6) and Setup (§7)
+### Phase 7 - Boot / Connecting (§6) and Setup (§7) - merged
+
+Implementation notes: both layouts are layers on one LVGL screen
+(`ui/startup.cpp`) that lives outside the strip - not registered, no
+gestures - and is deleted by `screens_reveal()` once Today has faded in
+over it. The status line is two labels that cross-fade. The setup password
+is eight `esp_random()` digits under the NVS key `appw`; `CHANGE NETWORK`
+rotates it before forgetting the network. `WIFI_AP_PASSWORD` is gone from
+config.h - there is nothing to compile in.
 
 The one phase that changes behaviour.
 
