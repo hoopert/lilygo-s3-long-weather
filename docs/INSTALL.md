@@ -199,9 +199,10 @@ after reset are the ones that matter:
 
 ```
 [panel] readback RDDID=FFFFFFFF RDDPM=FF COLMOD=FF (advisory: reads are unverified on this glass)
-[panel] self-test: turquoise/orange split, backlight full, holding 3000ms
-[touch] CST3530 at 0x58
-[loop] up=5s bl=255/255 flushes=80 heap=136K lvmem=40%
+[touch] controller: CST3530 @ 0x58
+[flush] first frame (0,0)-(639,179)
+[wx] located by IP: Los Angeles (33.955, -118.286)
+[loop] up=5s bl=255/255 flushes=12 heap=132K lvmem=40%
 ```
 
 The `[panel] readback` line is the controller asked for its own state. On the
@@ -234,7 +235,7 @@ nothing in software will fix it.
 | Board never appears as a serial port | Charge-only USB cable. Try another one first; this is by far the most common cause. |
 | Install button greyed out or missing | Browser without Web Serial (Safari, Firefox). Use Chrome, Edge, or Opera. |
 | Flash fails partway | Force download mode: hold BOOT, tap RST, release BOOT, retry. |
-| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). The panel is driven directly, with no LVGL, for the first moment after power-on: top half turquoise, bottom half orange, backlight forced full. **If the splash shows** the driver, bus and backlight all work and the fault is LVGL-side - check for the `[flush]` line. **If it is black**, set `PANEL_BOOT_PROBE` to 1 in `firmware/include/config.h`, rebuild, and note which `[probe] step N` fills lit; that names the init sequence the glass wants. If nothing lights at all, flash LilyGO's own image (below): if that lights, the fault is this firmware's; if that is black too, the board is faulty. Every 5s the console prints `[loop] up=... bl=... flushes=...`; if that never appears the main loop is hung. |
+| Screen stays black | Read the console (see [above](#seeing-what-the-panel-is-doing)). Set `PANEL_BOOT_SELF_TEST` to 1 in `firmware/include/config.h` and rebuild: the panel is then driven directly, with no LVGL, for the first moment after power-on (top half turquoise, bottom half orange, backlight forced full). **If that splash shows** the driver, bus and backlight all work and the fault is LVGL-side - check for the `[flush]` line. **If it is black**, set `PANEL_BOOT_PROBE` to 1 as well and note which `[probe] step N` fills lit; that names the init sequence the glass wants. If nothing lights at all, flash LilyGO's own image (below): if that lights, the fault is this firmware's; if that is black too, the board is faulty. Every 5s the console prints `[loop] up=... bl=... flushes=...`; if that never appears the main loop is hung. |
 | Colors look lurid — reds and blues swapped | `LV_COLOR_16_SWAP` in `firmware/include/lv_conf.h`. It should be `1`. |
 | Display is upside down | Swap `UI_ROTATION` in `firmware/include/config.h` between `LV_DISP_ROT_270` and `LV_DISP_ROT_90`. Leave `TOUCH_INVERT_X/Y` alone - LVGL rotates touch input with the display. |
 | Taps land in the wrong place | Swipe to the System screen and watch the **TOUCH / RAW XY** readout while pressing each corner. Then flip `TOUCH_INVERT_X` / `TOUCH_INVERT_Y` to match. |

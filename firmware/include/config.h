@@ -46,7 +46,9 @@
 //                        at the orange end. Touch needs no change either way:
 //                        LVGL rotates the raw coordinates itself.
 // ---------------------------------------------------------------------------
-#define PANEL_BOOT_SELF_TEST    1
+// Off in normal builds: the boot splash is the UI's job (docs/BOOT_ANIMATION.md).
+// Turn on to prove the panel path without LVGL when a screen goes black.
+#define PANEL_BOOT_SELF_TEST    0
 #define PANEL_BOOT_SELF_TEST_MS 600
 
 // Boot probe: before the self-test, try each candidate panel init in turn
